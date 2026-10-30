@@ -18,5 +18,6 @@
 | [阶段 2.6](02-6-frontend-todo-page.md) | 待办列表、筛选分页、新建编辑、完成与删除页面 | 已完成 |
 | [阶段 2.7](02-7-event-create-list-api.md) | 日程新建、UTC 校验、重叠时间范围与分页列表 | 已完成 |
 | [阶段 2.8](02-8-event-detail-update-delete.md) | 日程详情、PATCH 合并时间校验、用户隔离与软删除 | 已完成 |
+| [阶段 2.9](02-9-frontend-event-api-types.md) | 前端日程 TypeScript 类型与五个 API 封装 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
