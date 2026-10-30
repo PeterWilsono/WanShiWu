@@ -1,0 +1,53 @@
+[project]
+name = "wanshiwu-backend"
+version = "0.1.0"
+description = "万事屋 - 个人生活效率平台后端（FastAPI + SQLAlchemy + SQLite）"
+requires-python = ">=3.11"
+dependencies = [
+    # 依赖清单依据 docs/PROJECT_SPEC.md 第 5 章；版本于阶段 0 锁定（2026-10-30），
+    # 完整传递依赖见 requirements.lock.txt，之后不随意升级
+    "fastapi==0.162.0",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.14.2",
+    "pydantic-settings==2.16.2",
+    "sqlalchemy==2.1.6",
+    "alembic==1.20.1",
+    "pyjwt==2.15.1",
+    "argon2-cffi==25.1.0",
+    "apscheduler==3.11.3",
+    "httpx==0.28.1",
+    "trafilatura==2.3.1",
+    "openai==3.41.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.2.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.3",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+# 编码规范依据 PROJECT_SPEC.md 14.1：PEP 8、行宽 100
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle 错误
+    "W",   # pycodestyle 警告
+    "F",   # pyflakes
+    "I",   # isort 导入排序
+    "UP",  # pyupgrade 语法现代化
+    "B",   # bugbear 常见 bug
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

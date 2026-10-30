@@ -1,0 +1,25 @@
+/* 全局基础样式（阶段 0 最小版），UI 主体由 Element Plus 承担 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'Helvetica Neue',
+    Helvetica,
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #303133;
+  background-color: #f5f7fa;
+}
+
+#app {
+  min-height: 100vh;
+}

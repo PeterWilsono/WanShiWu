@@ -1,0 +1,44 @@
+# ---- 万事屋 .gitignore（依据 PROJECT_SPEC.md 13.1）----
+
+# 环境变量与密钥（绝不提交）
+.env
+.env.*
+!.env.example
+
+# 数据库文件与备份
+*.db
+*.db-wal
+*.db-shm
+backend/data/
+*.sqlite
+*.sqlite3
+backups/
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+dist/
+
+# Node / 前端
+node_modules/
+frontend/dist/
+*.local
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# WorkBuddy 助手工作记忆（本地数据，不入库）
+.workbuddy/
