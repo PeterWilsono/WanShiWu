@@ -401,7 +401,7 @@ onMounted(loadEvents)
           />
         </el-form-item>
         <p v-if="form.remindBeforeMin !== null" class="form-hint">
-          当前先保存提醒设置；站内到点通知将在 reminders 与调度器阶段启用。
+          保存后由后端每分钟扫描，到点后显示在右上角“通知”中。
         </p>
       </el-form>
       <template #footer>
