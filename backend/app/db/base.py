@@ -7,6 +7,7 @@ users 等特殊表在 7.2 中单独列出字段，不使用这些 mixin。
 
 from datetime import datetime
 
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.core.time import now_utc
@@ -15,6 +16,13 @@ from app.db.types import UTCDateTime
 
 class Base(DeclarativeBase):
     """所有模型的声明式基类（SQLAlchemy 2.0 风格，5.1）。"""
+
+
+class UserOwnedMixin:
+    """用户业务表通用主键与归属字段；所有查询都必须带 user_id（7.1）。"""
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
 
 class TimestampMixin:

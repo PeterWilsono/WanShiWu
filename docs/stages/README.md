@@ -10,5 +10,6 @@
 | [阶段 1.3](01-3-auth-api.md) | Argon2 密码哈希、注册登录、JWT 与当前用户接口 | 已完成 |
 | [阶段 1.4](01-4-frontend-auth-foundation.md) | Axios 拦截器、Token 持久化与 Pinia 登录状态 | 已完成 |
 | [阶段 1.5](01-5-login-page-router-guard.md) | 登录页、登录守卫、Token 恢复与安全回跳 | 已完成 |
+| [阶段 2.1](02-1-life-models-migration.md) | 待办、日程、分类、交易模型与 Alembic 迁移 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

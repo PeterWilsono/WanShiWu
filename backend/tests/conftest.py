@@ -20,6 +20,7 @@ from app.main import app
 
 # 注册所有模型，确保 create_all 覆盖全部表；后续模块在此追加导入
 from app.modules.auth import models as auth_models  # noqa: F401
+from app.modules.life import models as life_models  # noqa: F401
 
 
 @pytest.fixture()
