@@ -14,6 +14,8 @@ from app.modules.life.models import (
     Category,
     Event,
     Recurrence,
+    Reminder,
+    ReminderTargetType,
     Todo,
     TodoStatus,
     Transaction,
@@ -189,11 +191,55 @@ def complete_todo(db: Session, user_id: int, todo_id: int) -> tuple[Todo, Todo |
     return todo, next_todo
 
 
+def sync_event_reminder(db: Session, event: Event) -> Reminder | None:
+    """在调用方事务内同步日程提醒，不自行 commit。"""
+    reminder = db.scalar(
+        select(Reminder).where(
+            Reminder.user_id == event.user_id,
+            Reminder.target_type == ReminderTargetType.EVENT,
+            Reminder.target_id == event.id,
+        )
+    )
+    if event.deleted_at is not None or event.remind_before_min is None:
+        if reminder is not None and reminder.deleted_at is None:
+            reminder.deleted_at = now_utc()
+        return reminder
+
+    remind_at = event.start_at - timedelta(minutes=event.remind_before_min)
+    message = f"日程：{event.title}"[:200]
+    if reminder is None:
+        reminder = Reminder(
+            user_id=event.user_id,
+            target_type=ReminderTargetType.EVENT,
+            target_id=event.id,
+            remind_at=remind_at,
+            message=message,
+        )
+        db.add(reminder)
+        return reminder
+
+    schedule_changed = reminder.remind_at != remind_at or reminder.deleted_at is not None
+    reminder.remind_at = remind_at
+    reminder.message = message
+    reminder.deleted_at = None
+    if schedule_changed:
+        # 新的提醒计划不应继承旧计划的触发和已读状态。
+        reminder.fired_at = None
+        reminder.read_at = None
+    return reminder
+
+
 def create_event(db: Session, user_id: int, data: EventCreate) -> Event:
     event = Event(user_id=user_id, **data.model_dump())
     db.add(event)
-    db.commit()
-    db.refresh(event)
+    try:
+        db.flush()  # 先取得 event.id，再于同一事务中建立 reminder。
+        sync_event_reminder(db, event)
+        db.commit()
+        db.refresh(event)
+    except Exception:
+        db.rollback()
+        raise
     return event
 
 
@@ -249,16 +295,26 @@ def update_event(db: Session, user_id: int, event_id: int, data: EventUpdate) ->
 
     for field, value in updates.items():
         setattr(event, field, value)
-    db.commit()
-    db.refresh(event)
+    try:
+        sync_event_reminder(db, event)
+        db.commit()
+        db.refresh(event)
+    except Exception:
+        db.rollback()
+        raise
     return event
 
 
 def delete_event(db: Session, user_id: int, event_id: int) -> None:
-    """软删除日程；查询与后续详情访问都会过滤该记录。"""
+    """软删除日程及其提醒；两者在同一事务中提交。"""
     event = get_event(db, user_id, event_id)
     event.deleted_at = now_utc()
-    db.commit()
+    try:
+        sync_event_reminder(db, event)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 # 图标使用字符串标识而不存 emoji，前端后续可映射为自己的图标组件。

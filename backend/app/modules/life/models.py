@@ -51,6 +51,12 @@ class TransactionSource(StrEnum):
     TRIP = "trip"
 
 
+class ReminderTargetType(StrEnum):
+    EVENT = "event"
+    TODO = "todo"
+    CUSTOM = "custom"
+
+
 class Todo(UserOwnedMixin, TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "todos"
     __table_args__ = (
@@ -106,6 +112,31 @@ class Event(UserOwnedMixin, TimestampMixin, SoftDeleteMixin, Base):
     location: Mapped[str | None] = mapped_column(String(200))
     remind_before_min: Mapped[int | None] = mapped_column()
     note: Mapped[str | None] = mapped_column(Text)
+
+
+class Reminder(UserOwnedMixin, TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "reminders"
+    __table_args__ = (
+        Index("ix_reminders_fired_at_remind_at", "fired_at", "remind_at"),
+        UniqueConstraint("user_id", "target_type", "target_id", name="uq_reminders_user_target"),
+    )
+
+    target_type: Mapped[ReminderTargetType] = mapped_column(
+        SqlEnum(
+            ReminderTargetType,
+            values_callable=enum_values,
+            native_enum=False,
+            length=20,
+            validate_strings=True,
+            create_constraint=True,
+        )
+    )
+    # target 是多态业务目标，不使用数据库外键；由对应模块的 service 维护一致性。
+    target_id: Mapped[int | None] = mapped_column()
+    remind_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
+    message: Mapped[str] = mapped_column(String(200))
+    fired_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class Category(UserOwnedMixin, TimestampMixin, SoftDeleteMixin, Base):
