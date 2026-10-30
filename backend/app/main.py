@@ -4,6 +4,9 @@
 业务路由随阶段推进逐个注册；当前已具备统一响应、统一异常、结构化日志与认证接口。
 """
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.core.config import settings
@@ -12,13 +15,29 @@ from app.core.logging import RequestLogMiddleware, setup_logging
 from app.core.response import ok
 from app.modules.auth.router import router as auth_router
 from app.modules.life.router import router as life_router
+from app.scheduler.reminders import create_scheduler
 
 setup_logging(settings.log_level)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """进程启动时开启提醒调度，关闭时释放调度器线程。"""
+    scheduler = create_scheduler() if settings.scheduler_enabled else None
+    if scheduler is not None:
+        scheduler.start()
+    try:
+        yield
+    finally:
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
+
 
 app = FastAPI(
     title="万事屋 API",
     description="个人生活效率平台：统一 AI 入口 + 生活管家 / 食材管家 / 收藏箱 / 旅行规划",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # 先注册异常处理器再加中间件：中间件在更外层，能记录到异常转换后的真实状态码

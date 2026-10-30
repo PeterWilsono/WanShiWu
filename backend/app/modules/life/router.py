@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.life.models import Category, Event, Todo, Transaction, TransactionType
+from app.modules.life.models import Category, Event, Reminder, Todo, Transaction, TransactionType
 from app.modules.life.schemas import (
     CategoryCreate,
     CategoryResponse,
@@ -18,6 +18,9 @@ from app.modules.life.schemas import (
     EventListResponse,
     EventResponse,
     EventUpdate,
+    NotificationListQuery,
+    NotificationListResponse,
+    NotificationResponse,
     TodoCompleteResponse,
     TodoCreate,
     TodoListQuery,
@@ -45,8 +48,10 @@ from app.modules.life.service import (
     get_transaction,
     list_categories,
     list_events,
+    list_notifications,
     list_todos,
     list_transactions,
+    mark_notification_read,
     update_category,
     update_event,
     update_todo,
@@ -71,6 +76,10 @@ def serialize_category(category: Category) -> dict[str, Any]:
 
 def serialize_transaction(transaction: Transaction) -> dict[str, Any]:
     return TransactionResponse.model_validate(transaction).model_dump(mode="json")
+
+
+def serialize_notification(reminder: Reminder) -> dict[str, Any]:
+    return NotificationResponse.model_validate(reminder).model_dump(mode="json")
 
 
 @router.post("/todos")
@@ -169,6 +178,31 @@ def update_event_endpoint(
 def delete_event_endpoint(event_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     delete_event(db, current_user.id, event_id)
     return ok(message="删除成功")
+
+
+@router.get("/notifications")
+def list_notifications_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    query: Annotated[NotificationListQuery, Depends()],
+) -> dict:
+    items, total, unread_count = list_notifications(db, current_user.id, query)
+    result = NotificationListResponse(
+        items=[NotificationResponse.model_validate(item) for item in items],
+        total=total,
+        unread_count=unread_count,
+        page=query.page,
+        page_size=query.page_size,
+    )
+    return ok(result.model_dump(mode="json"))
+
+
+@router.post("/notifications/{notification_id}/read")
+def read_notification_endpoint(
+    notification_id: int, db: DbSession, current_user: CurrentUser
+) -> dict:
+    reminder = mark_notification_read(db, current_user.id, notification_id)
+    return ok(serialize_notification(reminder), "已标记为已读")
 
 
 @router.get("/categories")

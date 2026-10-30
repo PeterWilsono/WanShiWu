@@ -4,6 +4,7 @@
 每个测试函数之间数据隔离；禁止真实调用大模型与外部网络。
 """
 
+import os
 from collections.abc import Generator
 
 import pytest
@@ -12,15 +13,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+# 必须在导入应用配置前设置：测试不启动真实后台调度，避免写入开发数据库。
+os.environ["SCHEDULER_ENABLED"] = "false"
+
 # 导入 session 模块以注册 SQLite PRAGMA 监听器（WAL / 外键），模拟应用运行环境
-from app.db import session as db_session_module  # noqa: F401
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import app
+from app.db import session as db_session_module  # noqa: E402,F401
+from app.db.base import Base  # noqa: E402
+from app.db.session import get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 # 注册所有模型，确保 create_all 覆盖全部表；后续模块在此追加导入
-from app.modules.auth import models as auth_models  # noqa: F401
-from app.modules.life import models as life_models  # noqa: F401
+from app.modules.auth import models as auth_models  # noqa: E402,F401
+from app.modules.life import models as life_models  # noqa: E402,F401
 
 
 @pytest.fixture()

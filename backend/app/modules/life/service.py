@@ -27,6 +27,7 @@ from app.modules.life.schemas import (
     EventCreate,
     EventListQuery,
     EventUpdate,
+    NotificationListQuery,
     TodoCreate,
     TodoListQuery,
     TodoUpdate,
@@ -315,6 +316,73 @@ def delete_event(db: Session, user_id: int, event_id: int) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+def fire_due_reminders(db: Session, current_time: datetime | None = None) -> int:
+    """把到点且未触发的提醒标记为已触发；重复扫描不会重复触发。"""
+    current_time = current_time or now_utc()
+    if current_time.tzinfo is None or current_time.utcoffset() is None:
+        raise ValueError("扫描时间必须带时区")
+    current_time = current_time.astimezone(UTC)
+    reminders = list(
+        db.scalars(
+            select(Reminder).where(
+                Reminder.remind_at <= current_time,
+                Reminder.fired_at.is_(None),
+                Reminder.deleted_at.is_(None),
+            )
+        ).all()
+    )
+    for reminder in reminders:
+        reminder.fired_at = current_time
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return len(reminders)
+
+
+def list_notifications(
+    db: Session, user_id: int, query: NotificationListQuery
+) -> tuple[list[Reminder], int, int]:
+    """只有已触发的提醒才是通知；未来计划不会提前出现在列表中。"""
+    filters = [
+        Reminder.user_id == user_id,
+        Reminder.fired_at.is_not(None),
+        Reminder.deleted_at.is_(None),
+    ]
+    unread_filters = [*filters, Reminder.read_at.is_(None)]
+    unread_count = db.scalar(select(func.count()).select_from(Reminder).where(*unread_filters)) or 0
+    if query.unread:
+        filters = unread_filters
+    total = db.scalar(select(func.count()).select_from(Reminder).where(*filters)) or 0
+    statement = (
+        select(Reminder)
+        .where(*filters)
+        .order_by(Reminder.remind_at.desc(), Reminder.id.desc())
+        .offset((query.page - 1) * query.page_size)
+        .limit(query.page_size)
+    )
+    return list(db.scalars(statement).all()), total, unread_count
+
+
+def mark_notification_read(db: Session, user_id: int, notification_id: int) -> Reminder:
+    reminder = db.scalar(
+        select(Reminder).where(
+            Reminder.id == notification_id,
+            Reminder.user_id == user_id,
+            Reminder.fired_at.is_not(None),
+            Reminder.deleted_at.is_(None),
+        )
+    )
+    if reminder is None:
+        raise AppError(ErrorCode.NOT_FOUND, "通知不存在", 404)
+    if reminder.read_at is None:
+        reminder.read_at = now_utc()
+        db.commit()
+        db.refresh(reminder)
+    return reminder
 
 
 # 图标使用字符串标识而不存 emoji，前端后续可映射为自己的图标组件。

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/wanshiwu.db"
     default_timezone: str = "Asia/Shanghai"
     allow_register: bool = True
+    scheduler_enabled: bool = True
 
     # ---- 鉴权 ----
     jwt_secret: str = "change-me-to-a-long-random-string"

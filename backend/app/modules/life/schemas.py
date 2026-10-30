@@ -5,7 +5,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.modules.life.models import Recurrence, TodoStatus, TransactionSource, TransactionType
+from app.modules.life.models import (
+    Recurrence,
+    ReminderTargetType,
+    TodoStatus,
+    TransactionSource,
+    TransactionType,
+)
 
 
 def to_aware_utc(value: datetime | None) -> datetime | None:
@@ -329,5 +335,31 @@ class TransactionResponse(BaseModel):
 class TransactionListResponse(BaseModel):
     items: list[TransactionResponse]
     total: int
+    page: int
+    page_size: int
+
+
+class NotificationListQuery(BaseModel):
+    unread: bool = False
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=50, ge=1, le=100)
+
+
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    target_type: ReminderTargetType
+    target_id: int | None
+    remind_at: datetime
+    message: str
+    fired_at: datetime
+    read_at: datetime | None
+
+
+class NotificationListResponse(BaseModel):
+    items: list[NotificationResponse]
+    total: int
+    unread_count: int
     page: int
     page_size: int
