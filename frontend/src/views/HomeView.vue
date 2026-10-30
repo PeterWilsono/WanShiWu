@@ -19,6 +19,7 @@ async function handleLogout(): Promise<void> {
     <p v-if="authStore.user" class="home__welcome">你好，{{ authStore.user.username }}</p>
     <div class="home__actions">
       <el-button type="primary" @click="router.push({ name: 'todos' })">管理待办</el-button>
+      <el-button type="primary" plain @click="router.push({ name: 'events' })">管理日程</el-button>
       <el-button @click="handleLogout">退出登录</el-button>
     </div>
   </main>
