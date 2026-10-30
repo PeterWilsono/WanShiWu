@@ -25,5 +25,6 @@
 | [阶段 2.13](02-13-transaction-detail-update-delete.md) | 账目详情、PATCH 类型分类合并校验与软删除 | 已完成 |
 | [阶段 2.14](02-14-frontend-finance-api-types.md) | 前端分类/账目类型、API 与严格元分转换 | 已完成 |
 | [阶段 2.15](02-15-frontend-transaction-page.md) | 记账筛选分页、新建编辑、金额组件与软删除页面 | 已完成 |
+| [阶段 2.16](02-16-frontend-category-page.md) | 分类管理、内置保护、引用约束与表单交互 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
