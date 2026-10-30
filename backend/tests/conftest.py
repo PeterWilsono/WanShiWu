@@ -7,6 +7,7 @@
 from collections.abc import Generator
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -14,6 +15,8 @@ from sqlalchemy.pool import StaticPool
 # 导入 session 模块以注册 SQLite PRAGMA 监听器（WAL / 外键），模拟应用运行环境
 from app.db import session as db_session_module  # noqa: F401
 from app.db.base import Base
+from app.db.session import get_db
+from app.main import app
 
 # 注册所有模型，确保 create_all 覆盖全部表；后续模块在此追加导入
 from app.modules.auth import models as auth_models  # noqa: F401
@@ -36,3 +39,18 @@ def db_session() -> Generator[Session, None, None]:
         session.close()
         Base.metadata.drop_all(engine)
         engine.dispose()
+
+
+@pytest.fixture()
+def client(db_session: Session) -> Generator[TestClient, None, None]:
+    """接口测试客户端：把应用数据库依赖替换为当前测试的独立内存库。"""
+
+    def override_get_db() -> Generator[Session, None, None]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()

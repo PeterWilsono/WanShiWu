@@ -48,6 +48,7 @@ cd backend && pytest
 ## 文档
 
 - [项目说明书（唯一权威）](docs/PROJECT_SPEC.md) —— 需求、架构、数据库、接口、AI 层、开发路线
+- [阶段说明文档](docs/stages/README.md) —— 每个小任务的目标、知识点、实现方式与验证结果
 - 开发日志：`docs/devlog.md`（随开发补充）
 - 评测记录：`docs/eval_log.md`（阶段 3 起）
 
