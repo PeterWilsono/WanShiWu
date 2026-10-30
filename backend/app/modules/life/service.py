@@ -1,11 +1,14 @@
 """生活管家业务逻辑；所有查询都限定当前用户并过滤软删除。"""
 
+import calendar
+from datetime import datetime, timedelta
+
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.life.models import Todo, TodoStatus
+from app.modules.life.models import Recurrence, Todo, TodoStatus
 from app.modules.life.schemas import TodoCreate, TodoListQuery, TodoUpdate, to_aware_utc
 
 
@@ -106,3 +109,58 @@ def delete_todo(db: Session, user_id: int, todo_id: int) -> None:
     todo = get_todo(db, user_id, todo_id)
     todo.deleted_at = now_utc()
     db.commit()
+
+
+def advance_due_at(due_at: datetime, recurrence: Recurrence) -> datetime:
+    """以原截止时间为基准顺延一个周期，保留原时刻与时区。"""
+    if recurrence == Recurrence.DAILY:
+        return due_at + timedelta(days=1)
+    if recurrence == Recurrence.WEEKLY:
+        return due_at + timedelta(weeks=1)
+    if recurrence == Recurrence.MONTHLY:
+        # 不固定加 30 天；月末日期在短月中收敛到该月最后一天。
+        year = due_at.year + (due_at.month // 12)
+        month = due_at.month % 12 + 1
+        day = min(due_at.day, calendar.monthrange(year, month)[1])
+        return due_at.replace(year=year, month=month, day=day)
+    raise AppError(ErrorCode.BUSINESS_RULE_VIOLATION, "普通待办没有下一次周期", 422)
+
+
+def complete_todo(db: Session, user_id: int, todo_id: int) -> tuple[Todo, Todo | None]:
+    """完成待办；周期待办的下一次实例与状态更新在同一事务中提交。"""
+    todo = get_todo(db, user_id, todo_id)
+    if todo.status != TodoStatus.PENDING:
+        raise AppError(ErrorCode.CONFLICT, "只有进行中的待办可以完成", 409)
+    if todo.recurrence != Recurrence.NONE and todo.due_at is None:
+        raise AppError(
+            ErrorCode.BUSINESS_RULE_VIOLATION,
+            "周期性待办必须设置截止时间才能生成下一次",
+            422,
+        )
+
+    next_todo = None
+    if todo.recurrence != Recurrence.NONE:
+        next_todo = Todo(
+            user_id=user_id,
+            title=todo.title,
+            note=todo.note,
+            due_at=advance_due_at(todo.due_at, todo.recurrence),
+            priority=todo.priority,
+            recurrence=todo.recurrence,
+            # 复制列表，避免两个 ORM 对象意外共享同一个 Python 列表。
+            tags_json=list(todo.tags_json),
+        )
+    try:
+        todo.status = TodoStatus.DONE
+        todo.completed_at = now_utc()
+        if next_todo is not None:
+            db.add(next_todo)
+        db.commit()
+        db.refresh(todo)
+        if next_todo is not None:
+            db.refresh(next_todo)
+    except Exception:
+        # 任一步失败都撤销整组修改，避免“已完成但没生成下一次”。
+        db.rollback()
+        raise
+    return todo, next_todo

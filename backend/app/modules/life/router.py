@@ -10,13 +10,21 @@ from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.life.models import Todo
 from app.modules.life.schemas import (
+    TodoCompleteResponse,
     TodoCreate,
     TodoListQuery,
     TodoListResponse,
     TodoResponse,
     TodoUpdate,
 )
-from app.modules.life.service import create_todo, delete_todo, get_todo, list_todos, update_todo
+from app.modules.life.service import (
+    complete_todo,
+    create_todo,
+    delete_todo,
+    get_todo,
+    list_todos,
+    update_todo,
+)
 
 router = APIRouter(tags=["生活管家"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -68,3 +76,13 @@ def update_todo_endpoint(
 def delete_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     delete_todo(db, current_user.id, todo_id)
     return ok(message="删除成功")
+
+
+@router.post("/todos/{todo_id}/complete")
+def complete_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    todo, next_todo = complete_todo(db, current_user.id, todo_id)
+    result = TodoCompleteResponse(
+        todo=TodoResponse.model_validate(todo),
+        next_todo=TodoResponse.model_validate(next_todo) if next_todo else None,
+    )
+    return ok(result.model_dump(mode="json"), "完成成功")

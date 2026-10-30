@@ -113,6 +113,11 @@ class TodoResponse(BaseModel):
     updated_at: datetime
 
 
+class TodoCompleteResponse(BaseModel):
+    todo: TodoResponse = Field(description="已完成的当前待办")
+    next_todo: TodoResponse | None = Field(description="周期待办生成的新实例；普通待办为 null")
+
+
 class TodoListResponse(BaseModel):
     items: list[TodoResponse]
     total: int = Field(description="符合筛选条件的总条数")
