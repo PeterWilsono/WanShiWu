@@ -1,4 +1,4 @@
-"""生活管家路由；包含待办完整操作以及日程新建与范围列表。"""
+"""生活管家路由；包含待办与日程的新建、查询、修改和软删除。"""
 
 from typing import Annotated, Any
 
@@ -14,6 +14,7 @@ from app.modules.life.schemas import (
     EventListQuery,
     EventListResponse,
     EventResponse,
+    EventUpdate,
     TodoCompleteResponse,
     TodoCreate,
     TodoListQuery,
@@ -25,10 +26,13 @@ from app.modules.life.service import (
     complete_todo,
     create_event,
     create_todo,
+    delete_event,
     delete_todo,
+    get_event,
     get_todo,
     list_events,
     list_todos,
+    update_event,
     update_todo,
 )
 
@@ -118,3 +122,25 @@ def list_events_endpoint(
         page_size=query.page_size,
     )
     return ok(result.model_dump(mode="json"))
+
+
+@router.get("/events/{event_id}")
+def get_event_endpoint(event_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    return ok(serialize_event(get_event(db, current_user.id, event_id)))
+
+
+@router.patch("/events/{event_id}")
+def update_event_endpoint(
+    event_id: int,
+    data: EventUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    event = update_event(db, current_user.id, event_id, data)
+    return ok(serialize_event(event), "更新成功")
+
+
+@router.delete("/events/{event_id}")
+def delete_event_endpoint(event_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    delete_event(db, current_user.id, event_id)
+    return ok(message="删除成功")

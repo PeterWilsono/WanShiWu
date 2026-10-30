@@ -151,6 +151,28 @@ class EventCreate(BaseModel):
         return self
 
 
+class EventUpdate(BaseModel):
+    """PATCH 入参；未传字段保持不变，可空字段允许显式传 null 清空。"""
+
+    title: str = Field(default=None, min_length=1, max_length=200)
+    start_at: datetime = Field(default=None, description="开始时间，不允许清空")
+    end_at: datetime | None = Field(default=None)
+    all_day: bool = Field(default=None)
+    location: str | None = Field(default=None, max_length=200)
+    remind_before_min: int | None = Field(default=None, ge=0)
+    note: str | None = Field(default=None)
+
+    @field_validator("title", "location", mode="before")
+    @classmethod
+    def strip_text(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("start_at", "end_at")
+    @classmethod
+    def validate_event_time(cls, value: datetime | None) -> datetime | None:
+        return to_aware_utc(value)
+
+
 class EventListQuery(BaseModel):
     """按日程与 [range_start, range_end] 窗口是否重叠筛选。"""
 

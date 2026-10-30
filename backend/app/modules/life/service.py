@@ -12,6 +12,7 @@ from app.modules.life.models import Event, Recurrence, Todo, TodoStatus
 from app.modules.life.schemas import (
     EventCreate,
     EventListQuery,
+    EventUpdate,
     TodoCreate,
     TodoListQuery,
     TodoUpdate,
@@ -206,3 +207,40 @@ def list_events(db: Session, user_id: int, query: EventListQuery) -> tuple[list[
         .limit(query.page_size)
     )
     return list(db.scalars(statement).all()), total
+
+
+def get_event(db: Session, user_id: int, event_id: int) -> Event:
+    """只返回当前用户未删除的日程，避免通过越权响应泄露数据是否存在。"""
+    event = db.scalar(
+        select(Event).where(
+            Event.id == event_id,
+            Event.user_id == user_id,
+            Event.deleted_at.is_(None),
+        )
+    )
+    if event is None:
+        raise AppError(ErrorCode.NOT_FOUND, "日程不存在", 404)
+    return event
+
+
+def update_event(db: Session, user_id: int, event_id: int, data: EventUpdate) -> Event:
+    """局部更新日程，并用更新后的完整时间组合校验先后关系。"""
+    event = get_event(db, user_id, event_id)
+    updates = data.model_dump(exclude_unset=True)
+    start_at = updates.get("start_at", event.start_at)
+    end_at = updates.get("end_at", event.end_at)
+    if end_at is not None and end_at < start_at:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "结束时间不能早于开始时间", 422)
+
+    for field, value in updates.items():
+        setattr(event, field, value)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def delete_event(db: Session, user_id: int, event_id: int) -> None:
+    """软删除日程；查询与后续详情访问都会过滤该记录。"""
+    event = get_event(db, user_id, event_id)
+    event.deleted_at = now_utc()
+    db.commit()
