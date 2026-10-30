@@ -1,15 +1,18 @@
-"""生活管家路由；包含待办与日程的新建、查询、修改和软删除。"""
+"""生活管家路由；包含待办、日程和收支分类管理。"""
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.life.models import Event, Todo
+from app.modules.life.models import Category, Event, Todo, TransactionType
 from app.modules.life.schemas import (
+    CategoryCreate,
+    CategoryResponse,
+    CategoryUpdate,
     EventCreate,
     EventListQuery,
     EventListResponse,
@@ -24,14 +27,18 @@ from app.modules.life.schemas import (
 )
 from app.modules.life.service import (
     complete_todo,
+    create_category,
     create_event,
     create_todo,
+    delete_category,
     delete_event,
     delete_todo,
     get_event,
     get_todo,
+    list_categories,
     list_events,
     list_todos,
+    update_category,
     update_event,
     update_todo,
 )
@@ -46,6 +53,10 @@ def serialize_todo(todo: Todo) -> dict[str, Any]:
 
 def serialize_event(event: Event) -> dict[str, Any]:
     return EventResponse.model_validate(event).model_dump(mode="json")
+
+
+def serialize_category(category: Category) -> dict[str, Any]:
+    return CategoryResponse.model_validate(category).model_dump(mode="json")
 
 
 @router.post("/todos")
@@ -143,4 +154,39 @@ def update_event_endpoint(
 @router.delete("/events/{event_id}")
 def delete_event_endpoint(event_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     delete_event(db, current_user.id, event_id)
+    return ok(message="删除成功")
+
+
+@router.get("/categories")
+def list_categories_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    category_type: Annotated[TransactionType | None, Query(alias="type")] = None,
+) -> dict:
+    items = list_categories(db, current_user.id, category_type)
+    return ok([serialize_category(item) for item in items])
+
+
+@router.post("/categories")
+def create_category_endpoint(
+    data: CategoryCreate, db: DbSession, current_user: CurrentUser
+) -> dict:
+    category = create_category(db, current_user.id, data)
+    return ok(serialize_category(category), "创建成功")
+
+
+@router.patch("/categories/{category_id}")
+def update_category_endpoint(
+    category_id: int,
+    data: CategoryUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    category = update_category(db, current_user.id, category_id, data)
+    return ok(serialize_category(category), "更新成功")
+
+
+@router.delete("/categories/{category_id}")
+def delete_category_endpoint(category_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    delete_category(db, current_user.id, category_id)
     return ok(message="删除成功")

@@ -20,5 +20,6 @@
 | [阶段 2.8](02-8-event-detail-update-delete.md) | 日程详情、PATCH 合并时间校验、用户隔离与软删除 | 已完成 |
 | [阶段 2.9](02-9-frontend-event-api-types.md) | 前端日程 TypeScript 类型与五个 API 封装 | 已完成 |
 | [阶段 2.10](02-10-frontend-event-page.md) | 日程时间范围列表、新建编辑、删除与响应式页面 | 已完成 |
+| [阶段 2.11](02-11-category-management-api.md) | 默认分类初始化、分类 CRUD、唯一性与引用保护 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

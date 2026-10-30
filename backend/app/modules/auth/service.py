@@ -8,6 +8,7 @@ from app.core.errors import AppError, ErrorCode
 from app.core.security import hash_password, verify_password
 from app.modules.auth.models import User
 from app.modules.auth.schemas import RegisterRequest
+from app.modules.life.service import initialize_default_categories
 
 
 def register_user(db: Session, data: RegisterRequest) -> User:
@@ -19,6 +20,9 @@ def register_user(db: Session, data: RegisterRequest) -> User:
     user = User(username=data.username, password_hash=hash_password(data.password))
     db.add(user)
     try:
+        # 先取得用户 id，再让默认分类与用户在同一个事务中落库。
+        db.flush()
+        initialize_default_categories(db, user.id)
         db.commit()
     except IntegrityError as exc:
         db.rollback()

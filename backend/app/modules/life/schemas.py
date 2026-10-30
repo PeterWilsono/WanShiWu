@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.modules.life.models import Recurrence, TodoStatus
+from app.modules.life.models import Recurrence, TodoStatus, TransactionType
 
 
 def to_aware_utc(value: datetime | None) -> datetime | None:
@@ -202,3 +202,52 @@ class EventListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class CategoryCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=30)
+    type: TransactionType
+    icon: str | None = Field(default=None, max_length=30)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("icon")
+    @classmethod
+    def normalize_icon(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class CategoryUpdate(BaseModel):
+    """分类只允许改名称和图标；类型与内置标记不可通过 PATCH 修改。"""
+
+    name: str = Field(default=None, min_length=1, max_length=30)
+    icon: str | None = Field(default=None, max_length=30)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("icon")
+    @classmethod
+    def normalize_icon(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class CategoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    type: TransactionType
+    icon: str | None
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime

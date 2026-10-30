@@ -4,12 +4,23 @@ import calendar
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.life.models import Event, Recurrence, Todo, TodoStatus
+from app.modules.life.models import (
+    Category,
+    Event,
+    Recurrence,
+    Todo,
+    TodoStatus,
+    Transaction,
+    TransactionType,
+)
 from app.modules.life.schemas import (
+    CategoryCreate,
+    CategoryUpdate,
     EventCreate,
     EventListQuery,
     EventUpdate,
@@ -243,4 +254,129 @@ def delete_event(db: Session, user_id: int, event_id: int) -> None:
     """软删除日程；查询与后续详情访问都会过滤该记录。"""
     event = get_event(db, user_id, event_id)
     event.deleted_at = now_utc()
+    db.commit()
+
+
+# 图标使用字符串标识而不存 emoji，前端后续可映射为自己的图标组件。
+DEFAULT_CATEGORIES: tuple[tuple[TransactionType, str, str], ...] = (
+    (TransactionType.EXPENSE, "餐饮", "food"),
+    (TransactionType.EXPENSE, "交通", "transport"),
+    (TransactionType.EXPENSE, "购物", "shopping"),
+    (TransactionType.EXPENSE, "居家", "home"),
+    (TransactionType.EXPENSE, "娱乐", "entertainment"),
+    (TransactionType.EXPENSE, "医疗", "medical"),
+    (TransactionType.EXPENSE, "学习", "study"),
+    (TransactionType.EXPENSE, "其他", "other"),
+    (TransactionType.INCOME, "工资", "salary"),
+    (TransactionType.INCOME, "其他", "other"),
+)
+
+
+def initialize_default_categories(db: Session, user_id: int) -> None:
+    """补齐用户缺失的内置分类；只加入当前事务，由调用方统一提交。"""
+    existing = set(
+        db.execute(select(Category.type, Category.name).where(Category.user_id == user_id)).all()
+    )
+    categories = [
+        Category(user_id=user_id, type=category_type, name=name, icon=icon, is_default=True)
+        for category_type, name, icon in DEFAULT_CATEGORIES
+        if (category_type, name) not in existing
+    ]
+    db.add_all(categories)
+
+
+def list_categories(
+    db: Session, user_id: int, category_type: TransactionType | None
+) -> list[Category]:
+    filters = [Category.user_id == user_id, Category.deleted_at.is_(None)]
+    if category_type is not None:
+        filters.append(Category.type == category_type)
+    statement = (
+        select(Category)
+        .where(*filters)
+        .order_by(Category.type.asc(), Category.is_default.desc(), Category.id.asc())
+    )
+    return list(db.scalars(statement).all())
+
+
+def ensure_category_name_available(
+    db: Session,
+    user_id: int,
+    category_type: TransactionType,
+    name: str,
+    exclude_id: int | None = None,
+) -> None:
+    filters = [
+        Category.user_id == user_id,
+        Category.type == category_type,
+        Category.name == name,
+        Category.deleted_at.is_(None),
+    ]
+    if exclude_id is not None:
+        filters.append(Category.id != exclude_id)
+    if db.scalar(select(Category.id).where(*filters).limit(1)) is not None:
+        raise AppError(ErrorCode.CONFLICT, "同一收支类型下分类名称已存在", 409)
+
+
+def create_category(db: Session, user_id: int, data: CategoryCreate) -> Category:
+    ensure_category_name_available(db, user_id, data.type, data.name)
+    category = Category(
+        user_id=user_id,
+        name=data.name,
+        type=data.type,
+        icon=data.icon,
+        is_default=False,
+    )
+    db.add(category)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise AppError(ErrorCode.CONFLICT, "同一收支类型下分类名称已存在", 409) from exc
+    db.refresh(category)
+    return category
+
+
+def get_category(db: Session, user_id: int, category_id: int) -> Category:
+    category = db.scalar(
+        select(Category).where(
+            Category.id == category_id,
+            Category.user_id == user_id,
+            Category.deleted_at.is_(None),
+        )
+    )
+    if category is None:
+        raise AppError(ErrorCode.NOT_FOUND, "分类不存在", 404)
+    return category
+
+
+def update_category(db: Session, user_id: int, category_id: int, data: CategoryUpdate) -> Category:
+    category = get_category(db, user_id, category_id)
+    updates = data.model_dump(exclude_unset=True)
+    name = updates.get("name", category.name)
+    ensure_category_name_available(db, user_id, category.type, name, exclude_id=category.id)
+    for field, value in updates.items():
+        setattr(category, field, value)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise AppError(ErrorCode.CONFLICT, "同一收支类型下分类名称已存在", 409) from exc
+    db.refresh(category)
+    return category
+
+
+def delete_category(db: Session, user_id: int, category_id: int) -> None:
+    category = get_category(db, user_id, category_id)
+    if category.is_default:
+        raise AppError(ErrorCode.BUSINESS_RULE_VIOLATION, "内置分类不可删除", 422)
+    # 已删除的历史账目仍引用分类，因此检查时不过滤 transactions.deleted_at。
+    referenced = db.scalar(
+        select(Transaction.id)
+        .where(Transaction.user_id == user_id, Transaction.category_id == category.id)
+        .limit(1)
+    )
+    if referenced is not None:
+        raise AppError(ErrorCode.BUSINESS_RULE_VIOLATION, "已有账目引用该分类，只能改名", 422)
+    category.deleted_at = now_utc()
     db.commit()
