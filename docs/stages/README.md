@@ -8,5 +8,6 @@
 | [阶段 1.1](01-1-errors-logging.md) | 统一异常处理与 JSON 结构化请求日志 | 已完成 |
 | [阶段 1.2](01-2-database-users.md) | 数据库层、UTC 时间、users 表与 Alembic 迁移 | 已完成 |
 | [阶段 1.3](01-3-auth-api.md) | Argon2 密码哈希、注册登录、JWT 与当前用户接口 | 已完成 |
+| [阶段 1.4](01-4-frontend-auth-foundation.md) | Axios 拦截器、Token 持久化与 Pinia 登录状态 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
