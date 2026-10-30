@@ -1,11 +1,12 @@
 """生活管家业务逻辑；所有查询都限定当前用户并过滤软删除。"""
 
 import calendar
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
@@ -27,6 +28,8 @@ from app.modules.life.schemas import (
     TodoCreate,
     TodoListQuery,
     TodoUpdate,
+    TransactionCreate,
+    TransactionListQuery,
     to_aware_utc,
 )
 
@@ -380,3 +383,77 @@ def delete_category(db: Session, user_id: int, category_id: int) -> None:
         raise AppError(ErrorCode.BUSINESS_RULE_VIOLATION, "已有账目引用该分类，只能改名", 422)
     category.deleted_at = now_utc()
     db.commit()
+
+
+def validate_transaction_category(
+    db: Session, user_id: int, category_id: int, transaction_type: TransactionType
+) -> Category:
+    category = get_category(db, user_id, category_id)
+    if category.type != transaction_type:
+        raise AppError(ErrorCode.BUSINESS_RULE_VIOLATION, "分类类型与账目类型不一致", 422)
+    return category
+
+
+def create_transaction(db: Session, user_id: int, data: TransactionCreate) -> Transaction:
+    category = validate_transaction_category(db, user_id, data.category_id, data.type)
+    transaction = Transaction(
+        user_id=user_id,
+        amount_cents=data.amount_cents,
+        type=data.type,
+        category=category,
+        note=data.note,
+        occurred_at=data.occurred_at,
+        source=data.source,
+    )
+    db.add(transaction)
+    db.commit()
+    db.refresh(transaction)
+    return transaction
+
+
+def month_bounds_utc(month: str, timezone_name: str) -> tuple[datetime, datetime]:
+    """把用户时区中的自然月换算成左闭右开的 UTC 区间。"""
+    year, month_number = (int(part) for part in month.split("-"))
+    timezone = ZoneInfo(timezone_name)
+    start = datetime(year, month_number, 1, tzinfo=timezone)
+    if month_number == 12:
+        end = datetime(year + 1, 1, 1, tzinfo=timezone)
+    else:
+        end = datetime(year, month_number + 1, 1, tzinfo=timezone)
+    return start.astimezone(UTC), end.astimezone(UTC)
+
+
+def list_transactions(
+    db: Session,
+    user_id: int,
+    query: TransactionListQuery,
+    timezone_name: str,
+) -> tuple[list[Transaction], int]:
+    filters = [Transaction.user_id == user_id, Transaction.deleted_at.is_(None)]
+    if query.month is not None:
+        month_start, month_end = month_bounds_utc(query.month, timezone_name)
+        filters.extend(
+            [Transaction.occurred_at >= month_start, Transaction.occurred_at < month_end]
+        )
+    if query.category_id is not None:
+        filters.append(Transaction.category_id == query.category_id)
+    if query.type is not None:
+        filters.append(Transaction.type == query.type)
+
+    total = db.scalar(select(func.count()).select_from(Transaction).where(*filters)) or 0
+    sort_column = {
+        "occurred_at": Transaction.occurred_at,
+        "amount_cents": Transaction.amount_cents,
+        "created_at": Transaction.created_at,
+    }[query.sort]
+    order_by = sort_column.asc() if query.order == "asc" else sort_column.desc()
+    id_order = Transaction.id.asc() if query.order == "asc" else Transaction.id.desc()
+    statement = (
+        select(Transaction)
+        .options(selectinload(Transaction.category))
+        .where(*filters)
+        .order_by(order_by, id_order)
+        .offset((query.page - 1) * query.page_size)
+        .limit(query.page_size)
+    )
+    return list(db.scalars(statement).all()), total

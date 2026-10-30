@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.modules.life.models import Recurrence, TodoStatus, TransactionType
+from app.modules.life.models import Recurrence, TodoStatus, TransactionSource, TransactionType
 
 
 def to_aware_utc(value: datetime | None) -> datetime | None:
@@ -251,3 +251,60 @@ class CategoryResponse(BaseModel):
     is_default: bool
     created_at: datetime
     updated_at: datetime
+
+
+class TransactionCreate(BaseModel):
+    amount_cents: int = Field(gt=0, strict=True, description="金额，严格整数分")
+    type: TransactionType
+    category_id: int = Field(gt=0)
+    note: str | None = Field(default=None, max_length=200)
+    occurred_at: datetime = Field(description="实际发生时间，ISO 8601 且带时区")
+    source: TransactionSource = Field(default=TransactionSource.MANUAL)
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+    @field_validator("occurred_at")
+    @classmethod
+    def validate_occurred_at(cls, value: datetime) -> datetime:
+        converted = to_aware_utc(value)
+        assert converted is not None
+        return converted
+
+
+class TransactionListQuery(BaseModel):
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    month: str | None = Field(
+        default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="月份 YYYY-MM，按用户时区"
+    )
+    category_id: int | None = Field(default=None, ge=1)
+    type: TransactionType | None = None
+    sort: Literal["occurred_at", "amount_cents", "created_at"] = "occurred_at"
+    order: Literal["asc", "desc"] = "desc"
+
+
+class TransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    amount_cents: int
+    type: TransactionType
+    category_id: int
+    category: CategoryResponse
+    note: str | None
+    occurred_at: datetime
+    source: TransactionSource
+    created_at: datetime
+    updated_at: datetime
+
+
+class TransactionListResponse(BaseModel):
+    items: list[TransactionResponse]
+    total: int
+    page: int
+    page_size: int

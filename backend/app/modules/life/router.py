@@ -1,4 +1,4 @@
-"""生活管家路由；包含待办、日程和收支分类管理。"""
+"""生活管家路由；包含待办、日程、收支分类与账目管理。"""
 
 from typing import Annotated, Any
 
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
-from app.modules.life.models import Category, Event, Todo, TransactionType
+from app.modules.life.models import Category, Event, Todo, Transaction, TransactionType
 from app.modules.life.schemas import (
     CategoryCreate,
     CategoryResponse,
@@ -24,12 +24,17 @@ from app.modules.life.schemas import (
     TodoListResponse,
     TodoResponse,
     TodoUpdate,
+    TransactionCreate,
+    TransactionListQuery,
+    TransactionListResponse,
+    TransactionResponse,
 )
 from app.modules.life.service import (
     complete_todo,
     create_category,
     create_event,
     create_todo,
+    create_transaction,
     delete_category,
     delete_event,
     delete_todo,
@@ -38,6 +43,7 @@ from app.modules.life.service import (
     list_categories,
     list_events,
     list_todos,
+    list_transactions,
     update_category,
     update_event,
     update_todo,
@@ -57,6 +63,10 @@ def serialize_event(event: Event) -> dict[str, Any]:
 
 def serialize_category(category: Category) -> dict[str, Any]:
     return CategoryResponse.model_validate(category).model_dump(mode="json")
+
+
+def serialize_transaction(transaction: Transaction) -> dict[str, Any]:
+    return TransactionResponse.model_validate(transaction).model_dump(mode="json")
 
 
 @router.post("/todos")
@@ -190,3 +200,27 @@ def update_category_endpoint(
 def delete_category_endpoint(category_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     delete_category(db, current_user.id, category_id)
     return ok(message="删除成功")
+
+
+@router.post("/transactions")
+def create_transaction_endpoint(
+    data: TransactionCreate, db: DbSession, current_user: CurrentUser
+) -> dict:
+    transaction = create_transaction(db, current_user.id, data)
+    return ok(serialize_transaction(transaction), "创建成功")
+
+
+@router.get("/transactions")
+def list_transactions_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    query: Annotated[TransactionListQuery, Depends()],
+) -> dict:
+    items, total = list_transactions(db, current_user.id, query, current_user.timezone)
+    result = TransactionListResponse(
+        items=[TransactionResponse.model_validate(item) for item in items],
+        total=total,
+        page=query.page,
+        page_size=query.page_size,
+    )
+    return ok(result.model_dump(mode="json"))
