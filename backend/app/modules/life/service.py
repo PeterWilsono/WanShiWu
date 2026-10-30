@@ -30,6 +30,7 @@ from app.modules.life.schemas import (
     TodoUpdate,
     TransactionCreate,
     TransactionListQuery,
+    TransactionUpdate,
     to_aware_utc,
 )
 
@@ -457,3 +458,44 @@ def list_transactions(
         .limit(query.page_size)
     )
     return list(db.scalars(statement).all()), total
+
+
+def get_transaction(db: Session, user_id: int, transaction_id: int) -> Transaction:
+    transaction = db.scalar(
+        select(Transaction)
+        .options(selectinload(Transaction.category))
+        .where(
+            Transaction.id == transaction_id,
+            Transaction.user_id == user_id,
+            Transaction.deleted_at.is_(None),
+        )
+    )
+    if transaction is None:
+        raise AppError(ErrorCode.NOT_FOUND, "账目不存在", 404)
+    return transaction
+
+
+def update_transaction(
+    db: Session, user_id: int, transaction_id: int, data: TransactionUpdate
+) -> Transaction:
+    """局部更新，并用修改后的完整类型与分类组合验证业务规则。"""
+    transaction = get_transaction(db, user_id, transaction_id)
+    updates = data.model_dump(exclude_unset=True)
+    transaction_type = updates.get("type", transaction.type)
+    category_id = updates.get("category_id", transaction.category_id)
+    category = validate_transaction_category(db, user_id, category_id, transaction_type)
+
+    for field, value in updates.items():
+        if field != "category_id":
+            setattr(transaction, field, value)
+    # 同步 relationship，确保响应中的分类摘要与 category_id 一致。
+    transaction.category = category
+    db.commit()
+    db.refresh(transaction)
+    return transaction
+
+
+def delete_transaction(db: Session, user_id: int, transaction_id: int) -> None:
+    transaction = get_transaction(db, user_id, transaction_id)
+    transaction.deleted_at = now_utc()
+    db.commit()

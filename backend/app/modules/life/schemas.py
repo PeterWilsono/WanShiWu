@@ -276,6 +276,29 @@ class TransactionCreate(BaseModel):
         return converted
 
 
+class TransactionUpdate(BaseModel):
+    """PATCH 入参；非空字段不接受 null，备注可显式清空。"""
+
+    amount_cents: int = Field(default=None, gt=0, strict=True)
+    type: TransactionType = Field(default=None)
+    category_id: int = Field(default=None, gt=0)
+    note: str | None = Field(default=None, max_length=200)
+    occurred_at: datetime = Field(default=None)
+    source: TransactionSource = Field(default=None)
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+    @field_validator("occurred_at")
+    @classmethod
+    def validate_occurred_at(cls, value: datetime | None) -> datetime | None:
+        return to_aware_utc(value)
+
+
 class TransactionListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)

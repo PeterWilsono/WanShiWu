@@ -289,3 +289,242 @@ def test_list_transactions_rejects_invalid_query(client: TestClient, params: dic
     response = client.get("/api/v1/transactions", headers=headers, params=params)
     assert response.status_code == 422
     assert response.json()["code"] == 40001
+
+
+def test_get_transaction_detail_success(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    category = default_category(client, headers)
+    created = create_transaction(client, headers, category["id"], "详情账目")
+
+    response = client.get(f"/api/v1/transactions/{created['id']}", headers=headers)
+
+    assert response.status_code == 200
+    transaction = response.json()["data"]
+    assert transaction["id"] == created["id"]
+    assert transaction["note"] == "详情账目"
+    assert transaction["category"]["id"] == category["id"]
+    assert transaction["category"]["name"] == category["name"]
+
+
+def test_update_transaction_all_fields_and_normalize(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    expense = default_category(client, headers)
+    income = default_category(client, headers, "income")
+    created = create_transaction(client, headers, expense["id"])
+
+    response = client.patch(
+        f"/api/v1/transactions/{created['id']}",
+        headers=headers,
+        json={
+            "amount_cents": 50000,
+            "type": "income",
+            "category_id": income["id"],
+            "note": "  项目奖金  ",
+            "occurred_at": "2026-11-11T12:00:00+08:00",
+            "source": "trip",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "更新成功"
+    transaction = response.json()["data"]
+    assert transaction["amount_cents"] == 50000
+    assert transaction["type"] == "income"
+    assert transaction["category_id"] == income["id"]
+    assert transaction["category"]["name"] == income["name"]
+    assert transaction["note"] == "项目奖金"
+    assert transaction["occurred_at"] == "2026-11-11T04:00:00Z"
+    assert transaction["source"] == "trip"
+
+
+def test_update_transaction_empty_object_keeps_values(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    category = default_category(client, headers)
+    created = create_transaction(client, headers, category["id"])
+
+    response = client.patch(f"/api/v1/transactions/{created['id']}", headers=headers, json={})
+
+    assert response.status_code == 200
+    transaction = response.json()["data"]
+    assert transaction["amount_cents"] == created["amount_cents"]
+    assert transaction["type"] == created["type"]
+    assert transaction["category_id"] == created["category_id"]
+    assert transaction["note"] == created["note"]
+    assert transaction["occurred_at"] == created["occurred_at"]
+
+
+def test_update_transaction_can_clear_note_only(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    category = default_category(client, headers)
+    created = create_transaction(client, headers, category["id"], "待清空备注")
+
+    response = client.patch(
+        f"/api/v1/transactions/{created['id']}", headers=headers, json={"note": None}
+    )
+
+    assert response.status_code == 200
+    transaction = response.json()["data"]
+    assert transaction["note"] is None
+    assert transaction["amount_cents"] == created["amount_cents"]
+    assert transaction["category_id"] == created["category_id"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"amount_cents": 0},
+        {"amount_cents": -1},
+        {"amount_cents": 12.5},
+        {"amount_cents": 12.0},
+        {"amount_cents": True},
+        {"amount_cents": None},
+        {"type": None},
+        {"category_id": 0},
+        {"category_id": None},
+        {"note": "x" * 201},
+        {"occurred_at": "2026-11-10T09:00:00"},
+        {"occurred_at": None},
+        {"source": "unknown"},
+        {"source": None},
+    ],
+)
+def test_update_transaction_validation_errors_without_changes(
+    client: TestClient, payload: dict
+) -> None:
+    headers, _ = auth_headers(client)
+    category = default_category(client, headers)
+    created = create_transaction(client, headers, category["id"], "原始账目")
+
+    response = client.patch(f"/api/v1/transactions/{created['id']}", headers=headers, json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == 40001
+    current = client.get(f"/api/v1/transactions/{created['id']}", headers=headers).json()["data"]
+    assert current["amount_cents"] == created["amount_cents"]
+    assert current["type"] == created["type"]
+    assert current["category_id"] == created["category_id"]
+    assert current["note"] == created["note"]
+    assert current["occurred_at"] == created["occurred_at"]
+
+
+def test_update_transaction_merges_type_and_category_validation(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    expense = default_category(client, headers)
+    income = default_category(client, headers, "income")
+    created = create_transaction(client, headers, expense["id"], "组合校验")
+
+    only_type = client.patch(
+        f"/api/v1/transactions/{created['id']}", headers=headers, json={"type": "income"}
+    )
+    only_category = client.patch(
+        f"/api/v1/transactions/{created['id']}",
+        headers=headers,
+        json={"category_id": income["id"]},
+    )
+    both = client.patch(
+        f"/api/v1/transactions/{created['id']}",
+        headers=headers,
+        json={"type": "income", "category_id": income["id"]},
+    )
+
+    assert only_type.status_code == 422
+    assert only_type.json()["code"] == 42201
+    assert only_category.status_code == 422
+    assert only_category.json()["code"] == 42201
+    assert both.status_code == 200
+    assert both.json()["data"]["type"] == "income"
+    assert both.json()["data"]["category_id"] == income["id"]
+
+
+def test_update_transaction_rejects_other_user_category(client: TestClient) -> None:
+    headers, _ = auth_headers(client, "first")
+    category = default_category(client, headers)
+    created = create_transaction(client, headers, category["id"], "保持原分类")
+    other_headers, _ = auth_headers(client, "second")
+    other_category = default_category(client, other_headers)
+
+    response = client.patch(
+        f"/api/v1/transactions/{created['id']}",
+        headers=headers,
+        json={"category_id": other_category["id"]},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == 40401
+    current = client.get(f"/api/v1/transactions/{created['id']}", headers=headers).json()["data"]
+    assert current["category_id"] == category["id"]
+
+
+@pytest.mark.parametrize("method", ["get", "patch", "delete"])
+def test_transaction_detail_operations_require_login(client: TestClient, method: str) -> None:
+    kwargs = {"json": {}} if method == "patch" else {}
+    response = getattr(client, method)("/api/v1/transactions/1", **kwargs)
+    assert response.status_code == 401
+    assert response.json()["code"] == 40101
+
+
+@pytest.mark.parametrize("method", ["get", "patch", "delete"])
+def test_transaction_missing_and_other_user_return_same_404(
+    client: TestClient, db_session: Session, method: str
+) -> None:
+    owner_headers, _ = auth_headers(client, "owner")
+    category = default_category(client, owner_headers)
+    created = create_transaction(client, owner_headers, category["id"], "本人账目")
+    other_headers, _ = auth_headers(client, "other")
+    kwargs = {"json": {"note": "越权"}} if method == "patch" else {}
+
+    other_response = getattr(client, method)(
+        f"/api/v1/transactions/{created['id']}", headers=other_headers, **kwargs
+    )
+    missing_response = getattr(client, method)(
+        "/api/v1/transactions/999999", headers=other_headers, **kwargs
+    )
+
+    assert other_response.status_code == 404
+    assert other_response.json()["code"] == 40401
+    assert missing_response.status_code == 404
+    assert missing_response.json()["code"] == 40401
+    db_session.expire_all()
+    stored = db_session.get(Transaction, created["id"])
+    assert stored.note == "本人账目"
+    assert stored.deleted_at is None
+
+
+def test_delete_transaction_is_soft_and_hidden(client: TestClient, db_session: Session) -> None:
+    headers, _ = auth_headers(client)
+    category = default_category(client, headers)
+    created = create_transaction(client, headers, category["id"], "软删除账目")
+
+    deleted = client.delete(f"/api/v1/transactions/{created['id']}", headers=headers)
+
+    assert deleted.status_code == 200
+    assert deleted.json() == {"code": 0, "message": "删除成功", "data": None}
+    db_session.expire_all()
+    stored = db_session.get(Transaction, created["id"])
+    assert stored is not None
+    assert stored.deleted_at is not None
+    detail = client.get(f"/api/v1/transactions/{created['id']}", headers=headers)
+    listed = client.get("/api/v1/transactions", headers=headers).json()["data"]
+    repeated = client.delete(f"/api/v1/transactions/{created['id']}", headers=headers)
+    assert detail.status_code == 404
+    assert listed["total"] == 0
+    assert listed["items"] == []
+    assert repeated.status_code == 404
+
+
+def test_deleted_transaction_still_protects_category_from_deletion(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    custom = client.post(
+        "/api/v1/categories",
+        headers=headers,
+        json={"name": "临时分类", "type": "expense"},
+    ).json()["data"]
+    created = create_transaction(client, headers, custom["id"], "历史记录")
+    deleted = client.delete(f"/api/v1/transactions/{created['id']}", headers=headers)
+    assert deleted.status_code == 200
+
+    response = client.delete(f"/api/v1/categories/{custom['id']}", headers=headers)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == 42201
+    assert response.json()["message"] == "已有账目引用该分类，只能改名"

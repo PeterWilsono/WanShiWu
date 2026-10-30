@@ -28,6 +28,7 @@ from app.modules.life.schemas import (
     TransactionListQuery,
     TransactionListResponse,
     TransactionResponse,
+    TransactionUpdate,
 )
 from app.modules.life.service import (
     complete_todo,
@@ -38,8 +39,10 @@ from app.modules.life.service import (
     delete_category,
     delete_event,
     delete_todo,
+    delete_transaction,
     get_event,
     get_todo,
+    get_transaction,
     list_categories,
     list_events,
     list_todos,
@@ -47,6 +50,7 @@ from app.modules.life.service import (
     update_category,
     update_event,
     update_todo,
+    update_transaction,
 )
 
 router = APIRouter(tags=["生活管家"])
@@ -224,3 +228,27 @@ def list_transactions_endpoint(
         page_size=query.page_size,
     )
     return ok(result.model_dump(mode="json"))
+
+
+@router.get("/transactions/{transaction_id}")
+def get_transaction_endpoint(transaction_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    return ok(serialize_transaction(get_transaction(db, current_user.id, transaction_id)))
+
+
+@router.patch("/transactions/{transaction_id}")
+def update_transaction_endpoint(
+    transaction_id: int,
+    data: TransactionUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    transaction = update_transaction(db, current_user.id, transaction_id, data)
+    return ok(serialize_transaction(transaction), "更新成功")
+
+
+@router.delete("/transactions/{transaction_id}")
+def delete_transaction_endpoint(
+    transaction_id: int, db: DbSession, current_user: CurrentUser
+) -> dict:
+    delete_transaction(db, current_user.id, transaction_id)
+    return ok(message="删除成功")
