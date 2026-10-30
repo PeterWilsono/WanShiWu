@@ -48,6 +48,42 @@ class TodoCreate(BaseModel):
         return normalized
 
 
+class TodoUpdate(BaseModel):
+    """PATCH 入参：所有字段可选，未传与显式 null 由 exclude_unset 区分。"""
+
+    title: str = Field(default=None, min_length=1, max_length=200)
+    note: str | None = Field(default=None)
+    due_at: datetime | None = Field(default=None)
+    priority: int = Field(default=None, ge=1, le=3)
+    status: TodoStatus = Field(default=None)
+    recurrence: Recurrence = Field(default=None)
+    tags: list[str] = Field(default=None)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def strip_title(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("due_at")
+    @classmethod
+    def validate_due_at(cls, value: datetime | None) -> datetime | None:
+        return to_aware_utc(value)
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized: list[str] = []
+        for tag in value:
+            tag = tag.strip()
+            if not tag:
+                raise ValueError("标签不能为空白")
+            if tag not in normalized:
+                normalized.append(tag)
+        return normalized
+
+
 class TodoListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="页码，从 1 开始")
     page_size: int = Field(default=20, ge=1, le=100, description="每页条数，最大 100")

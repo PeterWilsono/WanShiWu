@@ -1,4 +1,4 @@
-"""生活管家路由；当前包含待办新建与列表。"""
+"""生活管家路由；当前包含待办新建、列表、详情、修改与软删除。"""
 
 from typing import Annotated, Any
 
@@ -9,8 +9,14 @@ from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.life.models import Todo
-from app.modules.life.schemas import TodoCreate, TodoListQuery, TodoListResponse, TodoResponse
-from app.modules.life.service import create_todo, list_todos
+from app.modules.life.schemas import (
+    TodoCreate,
+    TodoListQuery,
+    TodoListResponse,
+    TodoResponse,
+    TodoUpdate,
+)
+from app.modules.life.service import create_todo, delete_todo, get_todo, list_todos, update_todo
 
 router = APIRouter(tags=["生活管家"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -40,3 +46,25 @@ def list_todos_endpoint(
         page_size=query.page_size,
     )
     return ok(result.model_dump(mode="json"))
+
+
+@router.get("/todos/{todo_id}")
+def get_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    return ok(serialize_todo(get_todo(db, current_user.id, todo_id)))
+
+
+@router.patch("/todos/{todo_id}")
+def update_todo_endpoint(
+    todo_id: int,
+    data: TodoUpdate,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    todo = update_todo(db, current_user.id, todo_id, data)
+    return ok(serialize_todo(todo), "更新成功")
+
+
+@router.delete("/todos/{todo_id}")
+def delete_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    delete_todo(db, current_user.id, todo_id)
+    return ok(message="删除成功")

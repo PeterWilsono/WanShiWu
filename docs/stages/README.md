@@ -12,5 +12,6 @@
 | [阶段 1.5](01-5-login-page-router-guard.md) | 登录页、登录守卫、Token 恢复与安全回跳 | 已完成 |
 | [阶段 2.1](02-1-life-models-migration.md) | 待办、日程、分类、交易模型与 Alembic 迁移 | 已完成 |
 | [阶段 2.2](02-2-todo-create-list-api.md) | 待办 Schema、新建、分页筛选列表与用户隔离 | 已完成 |
+| [阶段 2.3](02-3-todo-detail-update-delete.md) | 待办详情、PATCH 局部更新、状态时间与软删除 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
