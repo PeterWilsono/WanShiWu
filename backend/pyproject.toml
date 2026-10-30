@@ -38,6 +38,8 @@ include = ["app*"]
 # 编码规范依据 PROJECT_SPEC.md 14.1：PEP 8、行宽 100
 line-length = 100
 target-version = "py311"
+# alembic 目录为自动生成文件（模板风格固定，且历史迁移禁止修改），不做风格检查
+extend-exclude = ["alembic"]
 
 [tool.ruff.lint]
 select = [
