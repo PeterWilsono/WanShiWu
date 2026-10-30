@@ -15,5 +15,6 @@
 | [阶段 2.3](02-3-todo-detail-update-delete.md) | 待办详情、PATCH 局部更新、状态时间与软删除 | 已完成 |
 | [阶段 2.4](02-4-todo-complete-recurrence.md) | 完成待办、周期顺延与数据库事务回滚 | 已完成 |
 | [阶段 2.5](02-5-frontend-todo-api-types.md) | 前端待办 TypeScript 类型与六个 API 封装 | 已完成 |
+| [阶段 2.6](02-6-frontend-todo-page.md) | 待办列表、筛选分页、新建编辑、完成与删除页面 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

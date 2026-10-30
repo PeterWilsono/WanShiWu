@@ -17,7 +17,10 @@ async function handleLogout(): Promise<void> {
     <h1>万事屋</h1>
     <p class="home__sub">个人生活效率平台</p>
     <p v-if="authStore.user" class="home__welcome">你好，{{ authStore.user.username }}</p>
-    <el-button class="home__logout" @click="handleLogout">退出登录</el-button>
+    <div class="home__actions">
+      <el-button type="primary" @click="router.push({ name: 'todos' })">管理待办</el-button>
+      <el-button @click="handleLogout">退出登录</el-button>
+    </div>
   </main>
 </template>
 
@@ -40,7 +43,13 @@ async function handleLogout(): Promise<void> {
   margin-top: 16px;
 }
 
-.home__logout {
-  margin-top: 8px;
+.home__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.home__actions .el-button + .el-button {
+  margin-left: 0;
 }
 </style>
