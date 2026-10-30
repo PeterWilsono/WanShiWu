@@ -1,11 +1,23 @@
 <script setup lang="ts">
-// 首页（阶段 0 占位）：全局输入框、四个模块入口、今日概览在后续阶段实现（PROJECT_SPEC.md 3.1）
+import { useRouter } from 'vue-router'
+
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+async function handleLogout(): Promise<void> {
+  authStore.logout()
+  await router.push({ name: 'login' })
+}
 </script>
 
 <template>
   <main class="home">
     <h1>万事屋</h1>
     <p class="home__sub">个人生活效率平台</p>
+    <p v-if="authStore.user" class="home__welcome">你好，{{ authStore.user.username }}</p>
+    <el-button class="home__logout" @click="handleLogout">退出登录</el-button>
   </main>
 </template>
 
@@ -22,5 +34,13 @@
 .home__sub {
   color: #909399;
   margin: 0;
+}
+
+.home__welcome {
+  margin-top: 16px;
+}
+
+.home__logout {
+  margin-top: 8px;
 }
 </style>

@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+
+import { useAuthStore } from '../stores/auth'
 import HomeView from '../views/HomeView.vue'
 
-// 完整路由与登录守卫见 PROJECT_SPEC.md 11.1，随阶段 1 起逐个补充
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -9,8 +10,48 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+      meta: { guestOnly: true },
     },
   ],
+})
+
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
+
+  if (to.meta.guestOnly) {
+    if (!authStore.isAuthenticated) return true
+    if (!authStore.user) {
+      try {
+        await authStore.fetchCurrentUser()
+      } catch {
+        // 本地 Token 已失效，store 会清理登录状态，允许进入登录页。
+        return true
+      }
+    }
+    return { name: 'home' }
+  }
+
+  if (!to.meta.requiresAuth) return true
+
+  if (!authStore.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (!authStore.user) {
+    try {
+      await authStore.fetchCurrentUser()
+    } catch {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+  }
+
+  return true
 })
 
 export default router
