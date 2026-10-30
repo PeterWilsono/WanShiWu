@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.life.models import Recurrence, TodoStatus
 
@@ -121,5 +121,62 @@ class TodoCompleteResponse(BaseModel):
 class TodoListResponse(BaseModel):
     items: list[TodoResponse]
     total: int = Field(description="符合筛选条件的总条数")
+    page: int
+    page_size: int
+
+
+class EventCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    start_at: datetime = Field(description="开始时间，ISO 8601 且带时区")
+    end_at: datetime | None = Field(default=None, description="结束时间，不得早于开始时间")
+    all_day: bool = False
+    location: str | None = Field(default=None, max_length=200)
+    remind_before_min: int | None = Field(default=None, ge=0, description="提前提醒分钟数")
+    note: str | None = None
+
+    @field_validator("title", "location", mode="before")
+    @classmethod
+    def strip_text(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("start_at", "end_at")
+    @classmethod
+    def validate_event_time(cls, value: datetime | None) -> datetime | None:
+        return to_aware_utc(value)
+
+    @model_validator(mode="after")
+    def validate_time_order(self) -> "EventCreate":
+        if self.end_at is not None and self.end_at < self.start_at:
+            raise ValueError("结束时间不能早于开始时间")
+        return self
+
+
+class EventListQuery(BaseModel):
+    """按日程与 [range_start, range_end] 窗口是否重叠筛选。"""
+
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=50, ge=1, le=100)
+    range_start: datetime | None = Field(default=None, description="查询窗口开始（含）")
+    range_end: datetime | None = Field(default=None, description="查询窗口结束（含）")
+
+
+class EventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    start_at: datetime
+    end_at: datetime | None
+    all_day: bool
+    location: str | None
+    remind_before_min: int | None
+    note: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class EventListResponse(BaseModel):
+    items: list[EventResponse]
+    total: int
     page: int
     page_size: int

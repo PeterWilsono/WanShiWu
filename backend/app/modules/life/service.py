@@ -8,8 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.life.models import Recurrence, Todo, TodoStatus
-from app.modules.life.schemas import TodoCreate, TodoListQuery, TodoUpdate, to_aware_utc
+from app.modules.life.models import Event, Recurrence, Todo, TodoStatus
+from app.modules.life.schemas import (
+    EventCreate,
+    EventListQuery,
+    TodoCreate,
+    TodoListQuery,
+    TodoUpdate,
+    to_aware_utc,
+)
 
 
 def create_todo(db: Session, user_id: int, data: TodoCreate) -> Todo:
@@ -164,3 +171,38 @@ def complete_todo(db: Session, user_id: int, todo_id: int) -> tuple[Todo, Todo |
         db.rollback()
         raise
     return todo, next_todo
+
+
+def create_event(db: Session, user_id: int, data: EventCreate) -> Event:
+    event = Event(user_id=user_id, **data.model_dump())
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def list_events(db: Session, user_id: int, query: EventListQuery) -> tuple[list[Event], int]:
+    try:
+        range_start = to_aware_utc(query.range_start)
+        range_end = to_aware_utc(query.range_end)
+    except ValueError as exc:
+        raise AppError(ErrorCode.VALIDATION_ERROR, str(exc), 422) from exc
+    if range_start and range_end and range_start > range_end:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "range_start 不能晚于 range_end", 422)
+
+    filters = [Event.user_id == user_id, Event.deleted_at.is_(None)]
+    if range_start is not None:
+        # 无结束时间的日程视为一个时间点；有结束时间的按实际区间判断重叠。
+        filters.append(func.coalesce(Event.end_at, Event.start_at) >= range_start)
+    if range_end is not None:
+        filters.append(Event.start_at <= range_end)
+
+    total = db.scalar(select(func.count()).select_from(Event).where(*filters)) or 0
+    statement = (
+        select(Event)
+        .where(*filters)
+        .order_by(Event.start_at.asc(), Event.id.asc())
+        .offset((query.page - 1) * query.page_size)
+        .limit(query.page_size)
+    )
+    return list(db.scalars(statement).all()), total
