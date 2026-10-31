@@ -134,6 +134,7 @@ onMounted(() => {
       </div>
       <div class="header-actions">
         <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
+        <el-button @click="$router.push({ name: 'stats' })">月度统计</el-button>
         <el-button @click="$router.push({ name: 'categories' })">分类管理</el-button>
         <el-button type="primary" @click="openCreate">记一笔</el-button>
       </div>
