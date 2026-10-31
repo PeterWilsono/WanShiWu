@@ -29,5 +29,6 @@
 | [阶段 2.17](02-17-reminders-event-sync.md) | reminders 表、日程提醒同事务联动与迁移回填 | 已完成 |
 | [阶段 2.18](02-18-reminder-scheduler-notifications.md) | 每分钟提醒扫描、通知列表与幂等已读 | 已完成 |
 | [阶段 2.19](02-19-frontend-notification-center.md) | 未读角标、30 秒轮询、新提醒与已读交互 | 已完成 |
+| [阶段 2.20](02-20-monthly-stats-api.md) | 月度收支总览、分类聚合、每日支出与时区边界 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

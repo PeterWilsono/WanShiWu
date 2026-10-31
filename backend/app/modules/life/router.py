@@ -21,6 +21,7 @@ from app.modules.life.schemas import (
     NotificationListQuery,
     NotificationListResponse,
     NotificationResponse,
+    StatsMonthQuery,
     TodoCompleteResponse,
     TodoCreate,
     TodoListQuery,
@@ -43,7 +44,9 @@ from app.modules.life.service import (
     delete_event,
     delete_todo,
     delete_transaction,
+    get_daily_stats,
     get_event,
+    get_monthly_stats,
     get_todo,
     get_transaction,
     list_categories,
@@ -286,3 +289,23 @@ def delete_transaction_endpoint(
 ) -> dict:
     delete_transaction(db, current_user.id, transaction_id)
     return ok(message="删除成功")
+
+
+@router.get("/stats/monthly")
+def monthly_stats_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    query: Annotated[StatsMonthQuery, Depends()],
+) -> dict:
+    result = get_monthly_stats(db, current_user.id, query.month, current_user.timezone)
+    return ok(result.model_dump(mode="json"))
+
+
+@router.get("/stats/daily")
+def daily_stats_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    query: Annotated[StatsMonthQuery, Depends()],
+) -> dict:
+    result = get_daily_stats(db, current_user.id, query.month, current_user.timezone)
+    return ok(result.model_dump(mode="json", by_alias=True))

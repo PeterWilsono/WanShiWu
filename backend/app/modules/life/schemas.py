@@ -1,6 +1,6 @@
 """生活管家接口 Schema；字段与 PROJECT_SPEC.md 7.2 / 8.1 对应。"""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -363,3 +363,32 @@ class NotificationListResponse(BaseModel):
     unread_count: int
     page: int
     page_size: int
+
+
+class StatsMonthQuery(BaseModel):
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="统计月份 YYYY-MM")
+
+
+class CategoryStats(BaseModel):
+    category_id: int
+    category_name: str
+    type: TransactionType
+    amount_cents: int = Field(description="该分类当月金额，整数分")
+
+
+class MonthlyStatsResponse(BaseModel):
+    month: str
+    income_cents: int = Field(description="当月总收入，整数分")
+    expense_cents: int = Field(description="当月总支出，整数分")
+    balance_cents: int = Field(description="收入减支出，可能为负数")
+    categories: list[CategoryStats] = Field(description="按类型、金额排序的分类汇总")
+
+
+class DailyExpenseStats(BaseModel):
+    day: date = Field(serialization_alias="date", description="用户时区中的自然日")
+    expense_cents: int = Field(description="当日支出，无账目时为 0")
+
+
+class DailyStatsResponse(BaseModel):
+    month: str
+    days: list[DailyExpenseStats] = Field(description="从月初到月末的完整每日支出序列")

@@ -1,7 +1,7 @@
 """生活管家业务逻辑；所有查询都限定当前用户并过滤软删除。"""
 
 import calendar
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select, text
@@ -23,10 +23,14 @@ from app.modules.life.models import (
 )
 from app.modules.life.schemas import (
     CategoryCreate,
+    CategoryStats,
     CategoryUpdate,
+    DailyExpenseStats,
+    DailyStatsResponse,
     EventCreate,
     EventListQuery,
     EventUpdate,
+    MonthlyStatsResponse,
     NotificationListQuery,
     TodoCreate,
     TodoListQuery,
@@ -623,3 +627,74 @@ def delete_transaction(db: Session, user_id: int, transaction_id: int) -> None:
     transaction = get_transaction(db, user_id, transaction_id)
     transaction.deleted_at = now_utc()
     db.commit()
+
+
+def get_monthly_stats(
+    db: Session, user_id: int, month: str, timezone_name: str
+) -> MonthlyStatsResponse:
+    """使用 SQL 聚合月度收支与分类金额，所有金额始终保持整数分。"""
+    month_start, month_end = month_bounds_utc(month, timezone_name)
+    filters = [
+        Transaction.user_id == user_id,
+        Transaction.deleted_at.is_(None),
+        Transaction.occurred_at >= month_start,
+        Transaction.occurred_at < month_end,
+    ]
+    total_rows = db.execute(
+        select(Transaction.type, func.sum(Transaction.amount_cents))
+        .where(*filters)
+        .group_by(Transaction.type)
+    ).all()
+    totals = {transaction_type: amount or 0 for transaction_type, amount in total_rows}
+    category_rows = db.execute(
+        select(Category.id, Category.name, Transaction.type, func.sum(Transaction.amount_cents))
+        .join(Category, Transaction.category_id == Category.id)
+        .where(*filters)
+        .group_by(Category.id, Category.name, Transaction.type)
+        .order_by(Transaction.type, func.sum(Transaction.amount_cents).desc(), Category.id)
+    ).all()
+    income = totals.get(TransactionType.INCOME, 0)
+    expense = totals.get(TransactionType.EXPENSE, 0)
+    return MonthlyStatsResponse(
+        month=month,
+        income_cents=income,
+        expense_cents=expense,
+        balance_cents=income - expense,
+        categories=[
+            CategoryStats(
+                category_id=row.id,
+                category_name=row.name,
+                type=row.type,
+                amount_cents=row[3],
+            )
+            for row in category_rows
+        ],
+    )
+
+
+def get_daily_stats(
+    db: Session, user_id: int, month: str, timezone_name: str
+) -> DailyStatsResponse:
+    """逐笔换算到用户时区后聚合，避免 SQLite 固定偏移无法处理夏令时。"""
+    month_start, month_end = month_bounds_utc(month, timezone_name)
+    rows = db.execute(
+        select(Transaction.occurred_at, Transaction.amount_cents).where(
+            Transaction.user_id == user_id,
+            Transaction.type == TransactionType.EXPENSE,
+            Transaction.deleted_at.is_(None),
+            Transaction.occurred_at >= month_start,
+            Transaction.occurred_at < month_end,
+        )
+    ).all()
+    timezone = ZoneInfo(timezone_name)
+    amounts: dict[date, int] = {}
+    for occurred_at, amount_cents in rows:
+        local_date = occurred_at.astimezone(timezone).date()
+        amounts[local_date] = amounts.get(local_date, 0) + amount_cents
+
+    year, month_number = (int(part) for part in month.split("-"))
+    days: list[DailyExpenseStats] = []
+    for day in range(1, calendar.monthrange(year, month_number)[1] + 1):
+        current_date = date(year, month_number, day)
+        days.append(DailyExpenseStats(day=current_date, expense_cents=amounts.get(current_date, 0)))
+    return DailyStatsResponse(month=month, days=days)
