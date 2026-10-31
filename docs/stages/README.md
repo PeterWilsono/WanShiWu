@@ -32,5 +32,6 @@
 | [阶段 2.20](02-20-monthly-stats-api.md) | 月度收支总览、分类聚合、每日支出与时区边界 | 已完成 |
 | [阶段 2.21](02-21-frontend-monthly-stats.md) | 月度统计页面、ECharts 饼图与每日支出折线图 | 已完成 |
 | [阶段 2.22](02-22-frontend-calendar.md) | FullCalendar 月历、日程待办分色与详情查看 | 已完成 |
+| [阶段 4 PWA](04-pwa-support.md) | 应用清单、图标、Service Worker 与离线提示 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
