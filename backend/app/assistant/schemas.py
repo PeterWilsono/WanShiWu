@@ -24,3 +24,20 @@ class ParseResponse(BaseModel):
     record_id: int
     actions: list[AssistantAction]
     clarification: str | None
+
+
+class ConfirmRequest(BaseModel):
+    record_id: int = Field(gt=0)
+    actions: list[AssistantAction] = Field(min_length=1, max_length=5)
+
+
+class ActionResult(BaseModel):
+    tool: str
+    ref: str
+    id: int
+
+
+class ConfirmResponse(BaseModel):
+    record_id: int
+    status: str
+    results: list[ActionResult]

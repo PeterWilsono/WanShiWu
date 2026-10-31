@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.assistant.dependencies import LLMClientDependency
-from app.assistant.schemas import ParseRequest, ParseResponse
-from app.assistant.service import parse_text
+from app.assistant.schemas import ConfirmRequest, ConfirmResponse, ParseRequest, ParseResponse
+from app.assistant.service import confirm_actions, parse_text
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
@@ -25,3 +25,11 @@ def parse_endpoint(
 ) -> dict[str, object]:
     result: ParseResponse = parse_text(db, current_user, llm, payload.text)
     return ok(result.model_dump(mode="json"))
+
+
+@router.post("/confirm")
+def confirm_endpoint(
+    payload: ConfirmRequest, db: DbSession, current_user: CurrentUser
+) -> dict[str, object]:
+    result: ConfirmResponse = confirm_actions(db, current_user, payload)
+    return ok(result.model_dump(mode="json"), message="已确认并写入")

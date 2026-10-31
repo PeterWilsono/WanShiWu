@@ -6,10 +6,18 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.assistant.executors import DISPATCH
 from app.assistant.models import AssistantRecord, AssistantStatus
-from app.assistant.schemas import AssistantAction, ParseResponse
+from app.assistant.schemas import (
+    ActionResult,
+    AssistantAction,
+    ConfirmRequest,
+    ConfirmResponse,
+    ParseResponse,
+)
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
 from app.llm.client import LLMClient, LLMResult
@@ -142,3 +150,70 @@ def parse_text(
         actions=[action for action in actions if action.tool != "ask_clarification"],
         clarification=clarification,
     )
+
+
+def _mark_failed(db: Session, record: AssistantRecord, message: str) -> None:
+    record.status = AssistantStatus.FAILED
+    record.error = message[:2000]
+    record.result_ref = None
+    record.executed_at = None
+    db.commit()
+
+
+def confirm_actions(
+    db: Session, user: User, payload: ConfirmRequest, *, current_time: datetime | None = None
+) -> ConfirmResponse:
+    record = db.scalar(
+        select(AssistantRecord).where(
+            AssistantRecord.id == payload.record_id,
+            AssistantRecord.user_id == user.id,
+            AssistantRecord.deleted_at.is_(None),
+        )
+    )
+    if record is None:
+        raise AppError(ErrorCode.NOT_FOUND, "AI 解析记录不存在", 404)
+    if record.status != AssistantStatus.PENDING:
+        raise AppError(ErrorCode.CONFLICT, "该记录已处理，不能重复确认", 409)
+
+    try:
+        validated = [
+            (action.tool, TOOL_ARG_MODELS[action.tool].model_validate(action.args))
+            for action in payload.actions
+        ]
+        if any(tool == "ask_clarification" for tool, _ in validated):
+            raise ValueError("追问动作需要补充信息，不能直接确认")
+        unsupported = [tool for tool, _ in validated if tool not in DISPATCH]
+        if unsupported:
+            raise ValueError(f"动作所属模块尚未开放：{', '.join(unsupported)}")
+    except (KeyError, ValidationError, ValueError) as exc:
+        db.rollback()
+        _mark_failed(db, record, f"确认参数校验失败：{exc}")
+        raise AppError(ErrorCode.VALIDATION_ERROR, f"确认参数不合法：{exc}", 422) from exc
+
+    results: list[ActionResult] = []
+    try:
+        for tool, args in validated:
+            resource, resource_id = DISPATCH[tool](db, user.id, args)
+            ref = f"{resource}:{resource_id}"
+            results.append(ActionResult(tool=tool, ref=ref, id=resource_id))
+        record.status = AssistantStatus.EXECUTED
+        record.result_ref = ",".join(item.ref for item in results)
+        record.error = None
+        record.executed_at = current_time or now_utc()
+        record.parsed_json = [
+            AssistantAction(tool=tool, args=args.model_dump(mode="json"), summary="")
+            .model_copy(update={"summary": _summary(tool, args.model_dump(mode="json"))})
+            .model_dump(mode="json")
+            for tool, args in validated
+        ]
+        db.commit()
+    except AppError:
+        db.rollback()
+        _mark_failed(db, record, "业务规则校验失败，未写入任何动作")
+        raise
+    except Exception as exc:
+        db.rollback()
+        _mark_failed(db, record, f"执行失败：{exc}")
+        raise
+
+    return ConfirmResponse(record_id=record.id, status=record.status.value, results=results)

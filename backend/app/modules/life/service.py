@@ -42,7 +42,7 @@ from app.modules.life.schemas import (
 )
 
 
-def create_todo(db: Session, user_id: int, data: TodoCreate) -> Todo:
+def create_todo(db: Session, user_id: int, data: TodoCreate, *, commit: bool = True) -> Todo:
     todo = Todo(
         user_id=user_id,
         title=data.title,
@@ -53,7 +53,10 @@ def create_todo(db: Session, user_id: int, data: TodoCreate) -> Todo:
         tags_json=data.tags,
     )
     db.add(todo)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     db.refresh(todo)
     return todo
 
@@ -234,13 +237,16 @@ def sync_event_reminder(db: Session, event: Event) -> Reminder | None:
     return reminder
 
 
-def create_event(db: Session, user_id: int, data: EventCreate) -> Event:
+def create_event(db: Session, user_id: int, data: EventCreate, *, commit: bool = True) -> Event:
     event = Event(user_id=user_id, **data.model_dump())
     db.add(event)
     try:
         db.flush()  # 先取得 event.id，再于同一事务中建立 reminder。
         sync_event_reminder(db, event)
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         db.refresh(event)
     except Exception:
         db.rollback()
@@ -523,7 +529,9 @@ def validate_transaction_category(
     return category
 
 
-def create_transaction(db: Session, user_id: int, data: TransactionCreate) -> Transaction:
+def create_transaction(
+    db: Session, user_id: int, data: TransactionCreate, *, commit: bool = True
+) -> Transaction:
     category = validate_transaction_category(db, user_id, data.category_id, data.type)
     transaction = Transaction(
         user_id=user_id,
@@ -535,7 +543,10 @@ def create_transaction(db: Session, user_id: int, data: TransactionCreate) -> Tr
         source=data.source,
     )
     db.add(transaction)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     db.refresh(transaction)
     return transaction
 
