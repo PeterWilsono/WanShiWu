@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.assistant.router import router as assistant_router
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestLogMiddleware, setup_logging
@@ -45,6 +46,7 @@ register_exception_handlers(app)
 app.add_middleware(RequestLogMiddleware)
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(life_router, prefix="/api/v1")
+app.include_router(assistant_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
