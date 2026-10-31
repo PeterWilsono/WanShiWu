@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 
-import { confirmAssistant, parseAssistant } from '../api/assistant'
+import { cancelAssistantRecord, confirmAssistant, parseAssistant } from '../api/assistant'
 import { ApiError } from '../api/http'
 import type { ActionResult, AssistantAction, AssistantTool } from '../types/assistant'
 import { yuanToCents } from '../utils/money'
@@ -12,6 +12,7 @@ const router = useRouter()
 const text = ref('')
 const parsing = ref(false)
 const confirming = ref(false)
+const cancelling = ref(false)
 const errorMessage = ref('')
 const clarification = ref('')
 const recordId = ref<number | null>(null)
@@ -167,6 +168,21 @@ async function handleConfirm(): Promise<void> {
   }
 }
 
+async function handleCancel(): Promise<void> {
+  if (recordId.value === null) return
+  cancelling.value = true
+  errorMessage.value = ''
+  try {
+    await cancelAssistantRecord(recordId.value)
+    resetResult()
+    ElMessage.success('已取消，未写入任何数据')
+  } catch (error) {
+    errorMessage.value = assistantError(error)
+  } finally {
+    cancelling.value = false
+  }
+}
+
 function resultRoute(result: ActionResult): string {
   if (result.ref.startsWith('todo:')) return '/todos'
   if (result.ref.startsWith('event:')) return '/events'
@@ -270,8 +286,8 @@ function toolName(tool: AssistantTool): string {
         </el-form>
       </el-card>
       <div class="assistant__confirm-row">
-        <el-button @click="resetResult">暂不处理</el-button>
-        <el-button type="primary" :loading="confirming" :disabled="hasUnsupported" @click="handleConfirm">
+        <el-button :loading="cancelling" :disabled="confirming" @click="handleCancel">取消记录</el-button>
+        <el-button type="primary" :loading="confirming" :disabled="hasUnsupported || cancelling" @click="handleConfirm">
           确认并写入 {{ drafts.length }} 个动作
         </el-button>
       </div>

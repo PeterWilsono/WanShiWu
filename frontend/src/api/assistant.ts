@@ -16,3 +16,7 @@ export async function confirmAssistant(data: ConfirmRequest): Promise<ConfirmRes
   const response = await http.post<ApiResponse<ConfirmResponse>>('/assistant/confirm', data)
   return response.data.data
 }
+
+export async function cancelAssistantRecord(recordId: number): Promise<void> {
+  await http.post<ApiResponse<unknown>>(`/assistant/records/${recordId}/cancel`)
+}
