@@ -37,6 +37,7 @@
 | [阶段 3.3](03-3-assistant-parse.md) | 工具参数模型、意图 Prompt、FakeLLMClient 与 parse 接口 | 已完成 |
 | [阶段 3.4](03-4-assistant-confirm.md) | 确认执行、工具 dispatch、多动作原子事务与幂等 | 已完成 |
 | [阶段 3.5](03-5-frontend-assistant-confirmation.md) | 首页 AI 输入、可编辑确认卡片、追问与成功跳转 | 已完成 |
+| [阶段 3.6](03-6-assistant-records-cancel-history.md) | AI 历史记录分页筛选、待确认取消与状态约束 | 已完成 |
 | [阶段 4 PWA](04-pwa-support.md) | 应用清单、图标、Service Worker 与离线提示 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

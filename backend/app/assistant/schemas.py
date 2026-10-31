@@ -1,8 +1,9 @@
 """AI 助手接口入参与出参。"""
 
-from typing import Any
+from datetime import datetime
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ParseRequest(BaseModel):
@@ -41,3 +42,31 @@ class ConfirmResponse(BaseModel):
     record_id: int
     status: str
     results: list[ActionResult]
+
+
+class AssistantRecordResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    raw_text: str
+    intent: str
+    parsed_json: list[dict[str, Any]]
+    status: Literal["pending", "executed", "cancelled", "failed"]
+    result_ref: str | None
+    error: str | None
+    executed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecordListQuery(BaseModel):
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    status: Literal["pending", "executed", "cancelled", "failed"] | None = None
+
+
+class AssistantRecordListResponse(BaseModel):
+    items: list[AssistantRecordResponse]
+    total: int
+    page: int
+    page_size: int

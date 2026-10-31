@@ -2,12 +2,20 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.assistant.dependencies import LLMClientDependency
-from app.assistant.schemas import ConfirmRequest, ConfirmResponse, ParseRequest, ParseResponse
-from app.assistant.service import confirm_actions, parse_text
+from app.assistant.schemas import (
+    AssistantRecordListResponse,
+    AssistantRecordResponse,
+    ConfirmRequest,
+    ConfirmResponse,
+    ParseRequest,
+    ParseResponse,
+    RecordListQuery,
+)
+from app.assistant.service import cancel_record, confirm_actions, list_records, parse_text
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
@@ -33,3 +41,22 @@ def confirm_endpoint(
 ) -> dict[str, object]:
     result: ConfirmResponse = confirm_actions(db, current_user, payload)
     return ok(result.model_dump(mode="json"), message="已确认并写入")
+
+
+@router.get("/records")
+def records_endpoint(
+    db: DbSession,
+    current_user: CurrentUser,
+    query: Annotated[RecordListQuery, Query()],
+) -> dict[str, object]:
+    result: AssistantRecordListResponse = list_records(db, current_user.id, query)
+    return ok(result.model_dump(mode="json"))
+
+
+@router.post("/records/{record_id}/cancel")
+def cancel_record_endpoint(
+    record_id: int, db: DbSession, current_user: CurrentUser
+) -> dict[str, object]:
+    record = cancel_record(db, current_user.id, record_id)
+    result = AssistantRecordResponse.model_validate(record)
+    return ok(result.model_dump(mode="json"), message="已取消待确认记录")

@@ -6,7 +6,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.assistant.executors import DISPATCH
@@ -14,9 +14,11 @@ from app.assistant.models import AssistantRecord, AssistantStatus
 from app.assistant.schemas import (
     ActionResult,
     AssistantAction,
+    AssistantRecordListResponse,
     ConfirmRequest,
     ConfirmResponse,
     ParseResponse,
+    RecordListQuery,
 )
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
@@ -217,3 +219,44 @@ def confirm_actions(
         raise
 
     return ConfirmResponse(record_id=record.id, status=record.status.value, results=results)
+
+
+def list_records(db: Session, user_id: int, query: RecordListQuery) -> AssistantRecordListResponse:
+    filters = [AssistantRecord.user_id == user_id, AssistantRecord.deleted_at.is_(None)]
+    if query.status is not None:
+        filters.append(AssistantRecord.status == AssistantStatus(query.status))
+    total = db.scalar(select(func.count()).select_from(AssistantRecord).where(*filters)) or 0
+    records = db.scalars(
+        select(AssistantRecord)
+        .where(*filters)
+        .order_by(AssistantRecord.created_at.desc(), AssistantRecord.id.desc())
+        .offset((query.page - 1) * query.page_size)
+        .limit(query.page_size)
+    ).all()
+    return AssistantRecordListResponse(
+        items=[record for record in records],
+        total=total,
+        page=query.page,
+        page_size=query.page_size,
+    )
+
+
+def cancel_record(db: Session, user_id: int, record_id: int) -> AssistantRecord:
+    record = db.scalar(
+        select(AssistantRecord).where(
+            AssistantRecord.id == record_id,
+            AssistantRecord.user_id == user_id,
+            AssistantRecord.deleted_at.is_(None),
+        )
+    )
+    if record is None:
+        raise AppError(ErrorCode.NOT_FOUND, "AI 解析记录不存在", 404)
+    if record.status != AssistantStatus.PENDING:
+        raise AppError(ErrorCode.CONFLICT, "只有待确认记录可以取消", 409)
+    record.status = AssistantStatus.CANCELLED
+    record.error = None
+    record.result_ref = None
+    record.executed_at = None
+    db.commit()
+    db.refresh(record)
+    return record
