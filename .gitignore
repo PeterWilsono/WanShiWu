@@ -26,6 +26,7 @@ venv/
 htmlcov/
 .coverage
 coverage.xml
+backend/evals/*-report.json
 dist/
 
 # Node / 前端

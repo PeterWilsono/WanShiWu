@@ -1,0 +1,36 @@
+{"id":1,"text":"明天下午三点约了牙医","expect":{"tool":"create_event","args":{"title":"牙医","start_at":"2026-10-31T15:00:00+08:00"}}}
+{"id":2,"text":"下周五前要交电费","expect":{"tool":"create_todo","args":{"title":"交电费","due_at":"2026-11-06T23:59:00+08:00"}}}
+{"id":3,"text":"午饭花了35","expect":{"tool":"add_expense","args":{"amount":35,"category":"餐饮"}}}
+{"id":4,"text":"买了6个鸡蛋，保质期一个月","expect":{"tool":"add_ingredient","args":{"name":"鸡蛋","quantity":6,"unit":"个","expire_on":"2026-11-30"}}}
+{"id":5,"text":"买了点东西","expect":{"tool":"ask_clarification"}}
+{"id":6,"text":"下周一上午十点在项目会议室开产品评审","expect":{"tool":"create_event","args":{"title":"产品评审","start_at":"2026-11-02T10:00:00+08:00","location":"项目会议室"}}}
+{"id":7,"text":"明天下午六点前把垃圾倒了","expect":{"tool":"create_todo","args":{"title":"垃圾","due_at":"2026-10-31T18:00:00+08:00"}}}
+{"id":8,"text":"早上打车花了28块5","expect":{"tool":"add_expense","args":{"amount":28.5,"category":"交通"}}}
+{"id":9,"text":"今天工资到账12000","expect":{"tool":"add_income","args":{"amount":12000,"category":"工资"}}}
+{"id":10,"text":"收藏这个链接 https://example.com/articles/ai-notes","expect":{"tool":"save_bookmark","args":{"url":"https://example.com/articles/ai-notes"}}}
+{"id":11,"text":"下个月想去京都玩5天，预算8000","expect":{"tool":"create_trip","args":{"destination":"京都","days":5,"budget":8000}}}
+{"id":12,"text":"冰箱里有2瓶牛奶，11月5号过期","expect":{"tool":"add_ingredient","args":{"name":"牛奶","quantity":2,"unit":"瓶","expire_on":"2026-11-05","storage":"fridge"}}}
+{"id":13,"text":"帮我约个时间见客户","expect":{"tool":"ask_clarification"}}
+{"id":14,"text":"记一笔","expect":{"tool":"ask_clarification"}}
+{"id":15,"text":"想去旅游","expect":{"tool":"ask_clarification"}}
+{"id":16,"text":"收藏一下","expect":{"tool":"ask_clarification"}}
+{"id":17,"text":"买点菜放冰箱","expect":{"tool":"ask_clarification"}}
+{"id":18,"text":"到时候提醒我","expect":{"tool":"ask_clarification"}}
+{"id":19,"text":"买菜花了80，还买了500克西红柿和12个鸡蛋","expect":{"actions":[{"tool":"add_expense","args":{"amount":80,"category":"餐饮"}},{"tool":"add_ingredient","args":{"name":"西红柿","quantity":500,"unit":"克"}},{"tool":"add_ingredient","args":{"name":"鸡蛋","quantity":12,"unit":"个"}}]}}
+{"id":20,"text":"把季度总结写完，优先级高一点","expect":{"tool":"create_todo","args":{"title":"季度总结","priority":3}}}
+{"id":21,"text":"下周三下午两点半带猫去打疫苗","expect":{"tool":"create_event","args":{"title":"打疫苗","start_at":"2026-11-04T14:30:00+08:00"}}}
+{"id":22,"text":"挂号花了126，算医疗","expect":{"tool":"add_expense","args":{"amount":126,"category":"医疗","note":"挂号"}}}
+{"id":23,"text":"退款到了88.8元","expect":{"tool":"add_income","args":{"amount":88.8,"category":"其他"}}}
+{"id":24,"text":"冷冻层新增2包饺子","expect":{"tool":"add_ingredient","args":{"name":"饺子","quantity":2,"unit":"包","storage":"freezer"}}}
+{"id":25,"text":"把 https://example.com/design 存起来，备注设计参考","expect":{"tool":"save_bookmark","args":{"url":"https://example.com/design","note":"设计参考"}}}
+{"id":26,"text":"元旦去上海玩3天，预算3000，想逛博物馆","expect":{"tool":"create_trip","args":{"destination":"上海","days":3,"budget":3000,"preferences":"博物馆"}}}
+{"id":27,"text":"明早九点半线上站会，提前15分钟提醒","expect":{"tool":"create_event","args":{"title":"站会","start_at":"2026-10-31T09:30:00+08:00","remind_before_min":15}}}
+{"id":28,"text":"今晚十一点前交报销单，很着急","expect":{"tool":"create_todo","args":{"title":"交报销单","due_at":"2026-10-30T23:00:00+08:00","priority":3}}}
+{"id":29,"text":"10月1日交房租4500","expect":{"tool":"add_expense","args":{"amount":4500,"category":"居家"}}}
+{"id":30,"text":"奖金发了2000，记收入","expect":{"tool":"add_income","args":{"amount":2000,"category":"工资"}}}
+{"id":31,"text":"明天那个事帮我弄一下","expect":{"tool":"ask_clarification"}}
+{"id":32,"text":"咖啡花了22，顺便买一包咖啡豆放常温","expect":{"actions":[{"tool":"add_expense","args":{"amount":22,"category":"餐饮"}},{"tool":"add_ingredient","args":{"name":"咖啡豆","quantity":1,"unit":"包","storage":"room"}}]}}
+{"id":33,"text":"周日下午四点在滨江公园跑步","expect":{"tool":"create_event","args":{"title":"跑步","start_at":"2026-11-01T16:00:00+08:00","location":"滨江公园"}}}
+{"id":34,"text":"下周三前把报销单交了","expect":{"tool":"create_todo","args":{"title":"报销单","due_at":"2026-11-04T23:59:00+08:00"}}}
+{"id":35,"text":"常温还有3包挂面","expect":{"tool":"add_ingredient","args":{"name":"挂面","quantity":3,"unit":"包","storage":"room"}}}
+{"id":36,"text":"想去成都玩四天，主要看川剧和吃小吃","expect":{"tool":"create_trip","args":{"destination":"成都","days":4,"preferences":"川剧和小吃"}}}

@@ -39,6 +39,7 @@
 | [阶段 3.5](03-5-frontend-assistant-confirmation.md) | 首页 AI 输入、可编辑确认卡片、追问与成功跳转 | 已完成 |
 | [阶段 3.6](03-6-assistant-records-cancel-history.md) | AI 历史记录分页筛选、待确认取消与状态约束 | 已完成 |
 | [阶段 3.7](03-7-frontend-assistant-cancel.md) | 首页真实取消待确认记录与并发操作防护 | 已完成 |
+| [阶段 3.8](03-8-intent-evaluation.md) | 36 条意图评测集、手动真实模型脚本与指标日志 | 已完成 |
 | [阶段 4 PWA](04-pwa-support.md) | 应用清单、图标、Service Worker 与离线提示 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
