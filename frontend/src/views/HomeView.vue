@@ -20,6 +20,7 @@ async function handleLogout(): Promise<void> {
     <div class="home__actions">
       <el-button type="primary" @click="router.push({ name: 'todos' })">管理待办</el-button>
       <el-button type="primary" plain @click="router.push({ name: 'events' })">管理日程</el-button>
+      <el-button type="primary" plain @click="router.push({ name: 'calendar' })">月历视图</el-button>
       <el-button type="success" plain @click="router.push({ name: 'transactions' })">管理账目</el-button>
       <el-button type="warning" plain @click="router.push({ name: 'stats' })">月度统计</el-button>
       <el-button @click="router.push({ name: 'categories' })">分类管理</el-button>

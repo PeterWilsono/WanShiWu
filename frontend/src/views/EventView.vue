@@ -256,6 +256,7 @@ onMounted(loadEvents)
       </div>
       <div class="header-actions">
         <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
+        <el-button @click="$router.push({ name: 'calendar' })">月历视图</el-button>
         <el-button type="primary" @click="openCreate">新建日程</el-button>
       </div>
     </header>
