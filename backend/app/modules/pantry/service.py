@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.pantry.models import Ingredient, IngredientStatus
+from app.modules.pantry.models import Ingredient, IngredientStatus, ShoppingItem
 from app.modules.pantry.schemas import (
     ConsumeBatchResult,
     ConsumeRequest,
@@ -20,6 +20,9 @@ from app.modules.pantry.schemas import (
     IngredientListQuery,
     IngredientResponse,
     IngredientUpdate,
+    ShoppingItemCreate,
+    ShoppingItemListQuery,
+    ShoppingItemUpdate,
 )
 
 
@@ -239,3 +242,66 @@ def list_expiring_ingredients(
         )
         (expired if days_to_expire < 0 else expiring).append(response)
     return ExpiringResponse(today=today, days=days, expired=expired, expiring=expiring)
+
+
+def create_shopping_item(
+    db: Session, user_id: int, data: ShoppingItemCreate, *, commit: bool = True
+) -> ShoppingItem:
+    """创建购物项；菜谱联动也经此 service 入口，并复用外层事务。"""
+    item = ShoppingItem(user_id=user_id, **data.model_dump())
+    db.add(item)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    db.refresh(item)
+    return item
+
+
+def list_shopping_items(
+    db: Session, user_id: int, query: ShoppingItemListQuery
+) -> tuple[list[ShoppingItem], int]:
+    filters = [ShoppingItem.user_id == user_id, ShoppingItem.deleted_at.is_(None)]
+    if query.done is not None:
+        filters.append(ShoppingItem.done == query.done)
+    if query.source is not None:
+        filters.append(ShoppingItem.source == query.source)
+    total = db.scalar(select(func.count()).select_from(ShoppingItem).where(*filters)) or 0
+    statement = (
+        select(ShoppingItem)
+        .where(*filters)
+        .order_by(ShoppingItem.done, ShoppingItem.created_at.desc(), ShoppingItem.id.desc())
+        .offset((query.page - 1) * query.page_size)
+        .limit(query.page_size)
+    )
+    return list(db.scalars(statement).all()), total
+
+
+def get_shopping_item(db: Session, user_id: int, item_id: int) -> ShoppingItem:
+    item = db.scalar(
+        select(ShoppingItem).where(
+            ShoppingItem.id == item_id,
+            ShoppingItem.user_id == user_id,
+            ShoppingItem.deleted_at.is_(None),
+        )
+    )
+    if item is None:
+        raise AppError(ErrorCode.NOT_FOUND, "购物项不存在", 404)
+    return item
+
+
+def update_shopping_item(
+    db: Session, user_id: int, item_id: int, data: ShoppingItemUpdate
+) -> ShoppingItem:
+    item = get_shopping_item(db, user_id, item_id)
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def delete_shopping_item(db: Session, user_id: int, item_id: int) -> None:
+    item = get_shopping_item(db, user_id, item_id)
+    item.deleted_at = now_utc()
+    db.commit()

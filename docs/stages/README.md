@@ -43,5 +43,6 @@
 | [阶段 4 PWA](04-pwa-support.md) | 应用清单、图标、Service Worker 与离线提示 | 已完成 |
 | [阶段 5.1](05-1-pantry-models-migration.md) | 食材批次、购物清单模型、数量约束与迁移 | 已完成 |
 | [阶段 5.2](05-2-ingredient-crud-fefo-expiring.md) | 食材 CRUD、FEFO 扣减、库存缺口与用户时区临期 | 已完成 |
+| [阶段 5.3](05-3-shopping-items-api.md) | 购物清单 CRUD、完成筛选与菜谱联动 service | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
