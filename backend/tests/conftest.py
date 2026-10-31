@@ -26,6 +26,7 @@ from app.llm import models as llm_models  # noqa: E402,F401
 from app.main import app  # noqa: E402
 from app.modules.auth import models as auth_models  # noqa: E402,F401
 from app.modules.life import models as life_models  # noqa: E402,F401
+from app.modules.pantry import models as pantry_models  # noqa: E402,F401
 
 
 @pytest.fixture()

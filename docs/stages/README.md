@@ -41,5 +41,6 @@
 | [阶段 3.7](03-7-frontend-assistant-cancel.md) | 首页真实取消待确认记录与并发操作防护 | 已完成 |
 | [阶段 3.8](03-8-intent-evaluation.md) | 36 条意图评测集、手动真实模型脚本与指标日志 | 已完成 |
 | [阶段 4 PWA](04-pwa-support.md) | 应用清单、图标、Service Worker 与离线提示 | 已完成 |
+| [阶段 5.1](05-1-pantry-models-migration.md) | 食材批次、购物清单模型、数量约束与迁移 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。
