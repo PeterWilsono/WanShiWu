@@ -11,6 +11,7 @@ from app.db.base import Base
 
 # 导入各模块 models 以注册到 Base.metadata，供 autogenerate 检测
 from app.assistant import models as assistant_models  # noqa: F401
+from app.llm import models as llm_models  # noqa: F401
 from app.modules.auth import models as auth_models  # noqa: F401
 from app.modules.life import models as life_models  # noqa: F401
 

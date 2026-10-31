@@ -22,6 +22,7 @@ from app.assistant import models as assistant_models  # noqa: E402,F401
 from app.db import session as db_session_module  # noqa: E402,F401
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402
+from app.llm import models as llm_models  # noqa: E402,F401
 from app.main import app  # noqa: E402
 from app.modules.auth import models as auth_models  # noqa: E402,F401
 from app.modules.life import models as life_models  # noqa: E402,F401
