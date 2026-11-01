@@ -5,12 +5,15 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
+from app.assistant.dependencies import LLMClientDependency
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
+from app.modules.trip.ai_service import generate_trip_draft
 from app.modules.trip.schemas import (
     ReorderRequest,
     TripCreate,
+    TripGenerateRequest,
     TripItemCreate,
     TripItemResponse,
     TripItemUpdate,
@@ -32,6 +35,14 @@ from app.modules.trip.service import (
 
 router = APIRouter(prefix="/trips", tags=["旅行规划"])
 Db = Annotated[Session, Depends(get_db)]
+
+
+@router.post("/generate")
+def generate_trip_endpoint(
+    current_user: CurrentUser, data: TripGenerateRequest, llm: LLMClientDependency
+) -> dict:
+    result = generate_trip_draft(llm, data)
+    return ok(result.model_dump(mode="json"), "行程草稿已生成，请确认后保存")
 
 
 @router.get("")

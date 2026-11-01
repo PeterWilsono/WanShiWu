@@ -1,6 +1,7 @@
 """旅行规划请求、响应与预算结构。"""
 
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -129,3 +130,33 @@ class TripGenerateRequest(BaseModel):
     days: int = Field(ge=1, le=30)
     budget_cents: int | None = Field(default=None, ge=0, le=MAX_MONEY_CENTS)
     preferences: str | None = Field(default=None, max_length=1000)
+
+
+class LLMTripItemOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    start_time: time | None = None
+    place: str = Field(min_length=1, max_length=200)
+    note: str | None = Field(default=None, max_length=2000)
+    cost_yuan: Decimal = Field(ge=0, le=Decimal("99999999.99"), decimal_places=2)
+
+
+class LLMTripDayOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    day_index: int = Field(ge=1, le=30)
+    items: list[LLMTripItemOutput] = Field(min_length=1, max_length=8)
+
+
+class LLMTripOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=100)
+    days: list[LLMTripDayOutput]
+
+
+class TripGenerateResponse(BaseModel):
+    draft: TripCreate
+    planned_cents: int
+    budget_remaining_cents: int | None
+    over_budget: bool
