@@ -9,7 +9,10 @@ import { centsToYuanInput, formatMoney } from '../utils/money'
 
 interface EditorItem extends TripItemPayload { cost: string }
 
-const props = defineProps<{ modelValue: boolean }>()
+const props = withDefaults(
+  defineProps<{ modelValue: boolean; initialMode?: 'manual' | 'ai' }>(),
+  { initialMode: 'manual' },
+)
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   saved: [trip: Trip]
@@ -25,7 +28,7 @@ const editorItems = ref<EditorItem[]>([])
 
 watch(visible, (open) => {
   if (!open) return
-  mode.value = 'manual'
+  mode.value = props.initialMode
   form.value = { title: '', destination: '', startDate: '', days: 3, budget: '', preferences: '' }
   draft.value = null
   editorItems.value = []

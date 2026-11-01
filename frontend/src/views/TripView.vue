@@ -15,6 +15,7 @@ const items = ref<Trip[]>([])
 const loading = ref(false)
 const loadError = ref('')
 const dialogVisible = ref(false)
+const dialogMode = ref<'manual' | 'ai'>('manual')
 const page = ref(1)
 const total = ref(0)
 const pageSize = 9
@@ -45,6 +46,10 @@ async function remove(trip: Trip): Promise<void> {
     await load()
   } catch (error) { ElMessage.error(message(error, '删除失败')) }
 }
+function openDialog(mode: 'manual' | 'ai'): void {
+  dialogMode.value = mode
+  dialogVisible.value = true
+}
 function saved(trip: Trip): void { void router.push({ name: 'trip-detail', params: { id: trip.id } }) }
 function dateRange(trip: Trip): string {
   if (!trip.start_date) return `${trip.days} 天 · 日期待定`
@@ -57,13 +62,19 @@ onMounted(load)
   <main class="trip-page">
     <header class="trip-hero">
       <div><p>JOURNEY NOTES · 旅行规划</p><h1>把远方，写成从容的日常。</h1><span>先留下想去的地方，再慢慢安排每一天。预算与节奏，都清晰可见。</span></div>
-      <el-button type="primary" @click="dialogVisible = true">规划新旅程</el-button>
+      <div class="trip-actions">
+        <el-button @click="openDialog('manual')">手动创建</el-button>
+        <el-button type="primary" @click="openDialog('ai')"><AppIcon name="sparkle" :size="16" />AI 生成行程</el-button>
+      </div>
     </header>
-    <el-alert title="AI 生成，景点、营业时间与价格请出行前核实" type="warning" :closable="false" show-icon class="trip-notice" />
+    <el-alert title="可点击右上角“AI 生成行程”创建可编辑草稿；景点、营业时间与价格请出行前核实" type="warning" :closable="false" show-icon class="trip-notice" />
     <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false"><el-button size="small" @click="load">重试</el-button></el-alert>
     <section v-loading="loading" class="trip-list" aria-live="polite">
       <el-empty v-if="!loading && !items.length && !loadError" description="还没有旅程，先为一个想去的地方留下计划吧。">
-        <el-button type="primary" @click="dialogVisible = true">创建第一段旅程</el-button>
+        <div class="empty-actions">
+          <el-button @click="openDialog('manual')">手动创建</el-button>
+          <el-button type="primary" @click="openDialog('ai')"><AppIcon name="sparkle" :size="16" />AI 生成行程</el-button>
+        </div>
       </el-empty>
       <div v-else class="trip-grid">
         <article v-for="trip in items" :key="trip.id" class="trip-card">
@@ -78,7 +89,7 @@ onMounted(load)
       </div>
     </section>
     <el-pagination v-if="total > pageSize" v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="load" />
-    <TripFormDialog v-model="dialogVisible" @saved="saved" />
+    <TripFormDialog v-model="dialogVisible" :initial-mode="dialogMode" @saved="saved" />
   </main>
 </template>
 
@@ -89,6 +100,8 @@ onMounted(load)
 .trip-hero h1 { margin: 14px 0; font-family: var(--font-display); font-size: clamp(36px, 4vw, 52px); font-weight: 500; letter-spacing: -.04em; }
 .trip-hero span { color: var(--ink-muted); font-size: 13px; line-height: 1.8; }
 .trip-notice { margin-bottom: 24px; }
+.trip-actions, .empty-actions { display: flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; }
+.trip-actions .el-button, .empty-actions .el-button { display: inline-flex; gap: 6px; margin-left: 0; }
 .trip-list { min-height: 300px; }
 .trip-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .trip-card { position: relative; overflow: hidden; border: 1px solid var(--line-soft); border-radius: 3px 24px 3px 3px; background: var(--paper-light); transition: transform .25s ease, box-shadow .25s ease; }
