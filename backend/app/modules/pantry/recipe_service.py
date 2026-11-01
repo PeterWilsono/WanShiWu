@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
 from app.llm.client import LLMClient
+from app.llm.structured import parse_json_object
 from app.modules.auth.models import User
 from app.modules.pantry.models import Ingredient, IngredientStatus, IngredientUnit
 from app.modules.pantry.schemas import (
@@ -75,7 +76,7 @@ def _messages(
 
 
 def _validate_output(text: str) -> LLMRecipeOutput:
-    return LLMRecipeOutput.model_validate(json.loads(text))
+    return LLMRecipeOutput.model_validate(parse_json_object(text))
 
 
 def _reconcile(output: LLMRecipeOutput, inventory: list[Ingredient]) -> RecipeRecommendResponse:

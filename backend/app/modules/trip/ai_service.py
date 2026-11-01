@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from app.core.errors import AppError, ErrorCode
 from app.llm.client import LLMClient
+from app.llm.structured import parse_json_object
 from app.modules.trip.models import GeneratedBy, TripStatus
 from app.modules.trip.schemas import (
     LLMTripOutput,
@@ -91,7 +92,7 @@ def generate_trip_draft(llm: LLMClient, data: TripGenerateRequest) -> TripGenera
             purpose="trip_generate",
         )
         try:
-            output = LLMTripOutput.model_validate(json.loads(result.text))
+            output = LLMTripOutput.model_validate(parse_json_object(result.text))
             validated = _convert_output(output, data)
             break
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:

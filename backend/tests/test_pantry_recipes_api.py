@@ -127,6 +127,36 @@ def test_recipe_prompt_and_stock_reconciliation_use_only_current_user(
     assert "秘密食材" not in call["messages"][1]["content"]
 
 
+def test_recipe_accepts_fenced_verbose_output_and_ignores_extra_metadata(
+    client: TestClient,
+) -> None:
+    headers = auth_headers(client)
+    payload = {
+        **recipe_payload(),
+        "summary": "模型附带的说明，不参与业务",
+        "recipes": [
+            {
+                **recipe,
+                "minutes": str(recipe["minutes"]),
+                "difficulty": "简单",
+                "uses": [{**item, "note": "附带说明"} for item in recipe["uses"]],
+            }
+            for recipe in recipe_payload()["recipes"]
+        ],
+    }
+    serialized = json.dumps(payload, ensure_ascii=False)
+    text = f"<think>先考虑清淡少油</think>以下是菜谱：\n```json\n{serialized}\n```"
+    fake = FakeLLMClient([llm_result(text)])
+    use_fake(fake)
+
+    response = recommend(client, headers, preferences="清淡少油")
+
+    assert response.status_code == 200, response.text
+    assert len(response.json()["data"]["recipes"]) == 3
+    assert "difficulty" not in response.json()["data"]["recipes"][0]
+    assert len(fake.calls) == 1
+
+
 def test_recipe_invalid_output_retries_once_then_accepts_valid_json(client: TestClient) -> None:
     headers = auth_headers(client)
     fake = FakeLLMClient([llm_result("不是 JSON"), llm_result(recipe_payload())])
@@ -146,13 +176,6 @@ def test_recipe_invalid_output_retries_once_then_accepts_valid_json(client: Test
         "```json\n{}\n```",
         [],
         {"recipes": []},
-        {**recipe_payload(), "extra": "不允许"},
-        {
-            "recipes": [
-                {**recipe_payload()["recipes"][0], "minutes": "20"},
-                *recipe_payload()["recipes"][1:],
-            ]
-        },
         {
             "recipes": [
                 {

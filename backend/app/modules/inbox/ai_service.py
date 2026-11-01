@@ -14,6 +14,7 @@ from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
 from app.db.session import SessionLocal
 from app.llm.client import LLMClient
+from app.llm.structured import parse_json_object
 from app.modules.inbox.fetcher import FetchError, fetch_article
 from app.modules.inbox.fts import upsert_bookmark_fts
 from app.modules.inbox.models import Bookmark, BookmarkStatus, BookmarkTag, Tag, TagSource
@@ -51,7 +52,7 @@ def summarize_content(llm: LLMClient, title: str | None, content: str) -> Summar
             purpose="summary",
         )
         try:
-            validated = SummaryOutput.model_validate(json.loads(result.text))
+            validated = SummaryOutput.model_validate(parse_json_object(result.text))
             break
         except (json.JSONDecodeError, ValidationError) as exc:
             last_error = exc

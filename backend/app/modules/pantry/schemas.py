@@ -252,11 +252,23 @@ class RecipeRecommendResponse(BaseModel):
     recipes: list[Recipe] = Field(min_length=3, max_length=3)
 
 
+class LLMRecipeIngredient(RecipeIngredient):
+    """模型附带的说明字段不参与库存计算，可以安全忽略。"""
+
+    model_config = ConfigDict(extra="ignore")
+
+
 class LLMRecipe(Recipe):
-    uses: list[RecipeIngredient] = Field(min_length=1, max_length=50)
+    """兼容常见数字字符串；业务约束和库存重核算保持不变。"""
+
+    model_config = ConfigDict(extra="ignore")
+
+    minutes: int = Field(strict=False, ge=1, le=480)
+    uses: list[LLMRecipeIngredient] = Field(min_length=1, max_length=50)
+    missing: list[LLMRecipeIngredient] = Field(max_length=50)
 
 
 class LLMRecipeOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     recipes: list[LLMRecipe] = Field(min_length=3, max_length=3)
