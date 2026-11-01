@@ -1,6 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
+set "PIP_CACHE_DIR=%~dp0.cache\pip"
 
 if not exist "backend\.venv\Scripts\python.exe" (
   echo [ERROR] Backend environment is missing.
@@ -28,8 +29,20 @@ if not exist "backend\.env" (
   echo Created backend\.env from the example. Add LLM_API_KEY later if you want to use AI.
 )
 
-echo Applying database migrations...
 pushd "backend"
+".venv\Scripts\python.exe" -c "import cryptography" >nul 2>nul
+if errorlevel 1 (
+  echo Installing updated backend dependencies...
+  ".venv\Scripts\python.exe" -m pip install -e ".[dev]"
+  if errorlevel 1 (
+    popd
+    echo [ERROR] Backend dependency installation failed. See the message above.
+    pause
+    exit /b 1
+  )
+)
+
+echo Applying database migrations...
 ".venv\Scripts\python.exe" -m alembic upgrade head
 if errorlevel 1 (
   popd

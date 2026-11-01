@@ -210,10 +210,15 @@ def test_llm_connection(
             timeout=settings.llm_timeout_seconds,
             max_retries=0,
         )
+        token_limit = (
+            {"max_completion_tokens": 8}
+            if provider == LLMProvider.MIMO
+            else {"max_tokens": 8}
+        )
         response = sdk.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": "只回复：连接成功"}],
-            max_tokens=8,
+            **token_limit,
             stream=False,
         )
         if not response.choices:

@@ -65,5 +65,6 @@
 | [阶段 8.1](08-1-windows-launcher.md) | Windows 双击启动、环境检查、自动迁移与浏览器入口 | 已完成 |
 | [阶段 8.2](08-2-docker-ci-backup.md) | Docker Compose、CI 覆盖率门槛与 SQLite 在线备份 | 已完成 |
 | [阶段 9.1](09-1-model-settings-backend.md) | MiMo / DeepSeek 按用户配置、密钥加密、模型切换与连接测试 | 已完成 |
+| [阶段 9.2](09-2-profile-settings-frontend.md) | 我的、设置导航、模型配置表单、通用偏好与启动兼容 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

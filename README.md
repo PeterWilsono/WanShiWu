@@ -10,7 +10,7 @@
 |---|---|
 | 后端 | Python 3.11+ · FastAPI · SQLAlchemy 2.0 · Alembic · SQLite(WAL) · Pydantic v2 |
 | 前端 | Vue 3 · TypeScript · Vite · Element Plus · Pinia · Vue Router |
-| AI | OpenAI 兼容接口（DeepSeek / 通义千问），function calling 意图识别 |
+| AI | OpenAI 兼容接口（小米 MiMo / DeepSeek），function calling 意图识别 |
 | 工程 | pytest · ruff · GitHub Actions · Docker Compose |
 
 ## 快速开始（开发模式）
@@ -23,7 +23,7 @@
 4. 浏览器地址是 **http://127.0.0.1:5173**。首次使用点击“创建账号”。
 5. 使用期间保留 `WanShiWu Backend` 和 `WanShiWu Frontend` 两个窗口；关闭这两个窗口即停止服务。
 
-`backend/.env` 不存在时脚本会从示例自动复制。手动功能无需模型 Key；要使用 AI，需编辑该文件并配置服务商的 `LLM_API_KEY` 等参数。只想检查环境而不启动服务，可在项目目录运行 `start-dev.bat --check`。
+`backend/.env` 不存在时脚本会从示例自动复制。手动功能无需模型 Key；要使用 AI，登录后点击右上角头像，进入 **“我的 → 设置 → AI 模型”**，分别配置 MiMo 或 DeepSeek 并测试连接，无需手动编辑文件。只想检查环境而不启动服务，可在项目目录运行 `start-dev.bat --check`。
 
 ### 手动启动方式
 
@@ -33,7 +33,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -e ".[dev]"
-copy .env.example .env          # 填入你的 LLM_API_KEY
+copy .env.example .env          # 可选：AI 也可登录后在“我的 → 设置”配置
 uvicorn app.main:app --reload   # http://localhost:8000/docs
 
 # 2. 前端
@@ -78,6 +78,7 @@ CI 位于 `.github/workflows/ci.yml`，包含后端 Ruff、pytest 和 80% 覆盖
 - [x] 阶段 6 · 收藏箱 P0/P1：标签、全文搜索、安全抓取、AI 摘要与每周回顾
 - [x] 阶段 7 · 旅行规划 P0/P1：每日安排、预算、AI 草稿、重排序与 Markdown 导出
 - [x] 阶段 8 · 一键启动、Docker/Compose、CI、备份脚本与项目文档
+- [x] 阶段 9 · 我的与设置：MiMo / DeepSeek 配置、加密密钥、连接测试与通用偏好
 
 当前四个模块的 P0/P1 主要流程均已落地，但不等于说明书全部版本已经完成。RAG 知识库、PDF/ICS 导出、地图与路线等 P2 增强尚未实现；真实模型质量、真实网页抓取、浏览器细节交互和真机 PWA 仍需单独验收。各小阶段的真实验证记录见阶段文档。
 

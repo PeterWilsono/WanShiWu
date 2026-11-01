@@ -67,7 +67,9 @@ async function logout(): Promise<void> {
           </button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item @click="navigate('categories')">分类设置</el-dropdown-item>
+              <el-dropdown-item @click="navigate('profile')">我的</el-dropdown-item>
+              <el-dropdown-item @click="navigate('settings')">设置</el-dropdown-item>
+              <el-dropdown-item @click="navigate('categories')">分类管理</el-dropdown-item>
               <el-dropdown-item divided @click="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -88,7 +90,9 @@ async function logout(): Promise<void> {
         >
           <AppIcon :name="item.icon" :size="18" />{{ item.label }}<AppIcon name="arrow" :size="16" />
         </button>
-        <button @click="navigate('categories')"><AppIcon name="settings" :size="18" />分类设置<AppIcon name="arrow" :size="16" /></button>
+        <button @click="navigate('profile')"><AppIcon name="user" :size="18" />我的<AppIcon name="arrow" :size="16" /></button>
+        <button @click="navigate('settings')"><AppIcon name="settings" :size="18" />设置<AppIcon name="arrow" :size="16" /></button>
+        <button @click="navigate('categories')"><AppIcon name="wallet" :size="18" />分类管理<AppIcon name="arrow" :size="16" /></button>
       </nav>
     </Transition>
   </header>
