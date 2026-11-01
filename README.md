@@ -15,6 +15,18 @@
 
 ## 快速开始（开发模式）
 
+### Windows 最简单的方式（推荐）
+
+1. 打开项目文件夹 `D:\cursor\wanshiwu-001`。
+2. **双击根目录的 `start-dev.bat`**，不要双击 `frontend/index.html`。
+3. 脚本会检查环境、执行数据库迁移，分别打开后端和前端窗口，然后自动打开浏览器。
+4. 浏览器地址是 **http://127.0.0.1:5173**。首次使用点击“创建账号”。
+5. 使用期间保留 `WanShiWu Backend` 和 `WanShiWu Frontend` 两个窗口；关闭这两个窗口即停止服务。
+
+`backend/.env` 不存在时脚本会从示例自动复制。手动功能无需模型 Key；要使用 AI，需编辑该文件并配置服务商的 `LLM_API_KEY` 等参数。只想检查环境而不启动服务，可在项目目录运行 `start-dev.bat --check`。
+
+### 手动启动方式
+
 ```bash
 # 1. 后端
 cd backend
