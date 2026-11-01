@@ -30,6 +30,7 @@ from app.modules.inbox.dependencies import get_bookmark_processor  # noqa: E402
 from app.modules.inbox.fts import ensure_bookmarks_fts  # noqa: E402
 from app.modules.life import models as life_models  # noqa: E402,F401
 from app.modules.pantry import models as pantry_models  # noqa: E402,F401
+from app.modules.trip import models as trip_models  # noqa: E402,F401
 
 
 @pytest.fixture()
