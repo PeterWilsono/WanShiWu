@@ -86,12 +86,13 @@ async function retry(item: Bookmark): Promise<void> {
 function openContent(item: Bookmark): void {
   contentTarget.value = item; contentText.value = item.content ?? ''; contentVisible.value = true
 }
-async function saveContent(): Promise<void> {
+async function saveContent(generateSummary = true): Promise<void> {
   if (!contentTarget.value || !contentText.value.trim()) { ElMessage.warning('请先粘贴正文'); return }
   contentSubmitting.value = true
   try {
-    await updateBookmarkContent(contentTarget.value.id, contentText.value.trim())
-    ElMessage.success('正文与摘要已更新'); contentVisible.value = false
+    await updateBookmarkContent(contentTarget.value.id, contentText.value.trim(), generateSummary)
+    ElMessage.success(generateSummary ? '正文与摘要已更新' : '正文已保存，可稍后生成摘要')
+    contentVisible.value = false
     await Promise.all([load(), loadTags()])
   } catch (error) { ElMessage.error(message(error, '摘要生成失败，正文已保留，可稍后重试')) }
   finally { contentSubmitting.value = false }
@@ -142,9 +143,16 @@ onUnmounted(() => window.clearInterval(timer))
     </el-tabs>
     <BookmarkFormDialog v-model="dialogVisible" :bookmark="editing" @saved="saved" />
     <el-dialog v-model="contentVisible" title="收藏正文" width="min(720px, 94vw)">
-      <p class="content-tip">抓取失败时可手动粘贴正文；保存后会重新生成 AI 摘要，正文始终保留。</p>
+      <div class="content-guide">
+        <p>AI 不会自行打开链接；系统会先在服务器读取公开网页。遇到登录、验证码或动态页面时，可以打开原文复制正文。</p>
+        <a v-if="contentTarget" :href="contentTarget.url" target="_blank" rel="noopener noreferrer">打开原文并复制正文</a>
+      </div>
       <el-input v-model="contentText" type="textarea" :rows="14" maxlength="100000" placeholder="粘贴文章正文……" />
-      <template #footer><el-button @click="contentVisible = false">关闭</el-button><el-button type="primary" :loading="contentSubmitting" @click="saveContent">保存并生成摘要</el-button></template>
+      <template #footer>
+        <el-button @click="contentVisible = false">关闭</el-button>
+        <el-button :disabled="contentSubmitting" @click="saveContent(false)">仅保存正文</el-button>
+        <el-button type="primary" :loading="contentSubmitting" @click="saveContent()">保存并生成摘要</el-button>
+      </template>
     </el-dialog>
   </main>
 </template>
@@ -160,7 +168,9 @@ onUnmounted(() => window.clearInterval(timer))
 .bookmark-section { min-height: 280px; }
 .bookmark-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .el-pagination { justify-content: center; margin-top: 30px; }
-.content-tip { margin-bottom: 16px; color: var(--ink-muted); font-size: 12px; line-height: 1.8; }
+.content-guide { margin-bottom: 16px; padding: 12px 14px; border-radius: 3px 10px 3px 3px; background: var(--paper-deep); }
+.content-guide p { margin: 0 0 7px; color: var(--ink-secondary); font-size: 12px; line-height: 1.8; }
+.content-guide a { color: var(--vermilion); font-size: 12px; text-decoration: none; }
 @media (max-width: 1050px) { .bookmark-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inbox-toolbar { grid-template-columns: 1fr 1fr 1fr; } .inbox-toolbar .el-input { grid-column: 1 / -1; } }
 @media (max-width: 640px) { .inbox-page { padding: 38px 18px 60px; } .inbox-hero { align-items: flex-start; flex-direction: column; } .inbox-hero h1 { font-size: 38px; } .inbox-toolbar { grid-template-columns: 1fr 1fr; } .bookmark-grid { grid-template-columns: 1fr; } }
 </style>

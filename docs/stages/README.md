@@ -67,5 +67,6 @@
 | [阶段 9.1](09-1-model-settings-backend.md) | MiMo / DeepSeek 按用户配置、密钥加密、模型切换与连接测试 | 已完成 |
 | [阶段 9.2](09-2-profile-settings-frontend.md) | 我的、设置导航、模型配置表单、通用偏好与启动兼容 | 已完成 |
 | [阶段 10.1](10-1-structured-ai-output.md) | 菜谱/摘要/行程 JSON 围栏兼容、宽松边界与严格业务校验 | 已完成 |
+| [阶段 10.2](10-2-inbox-fetch-rescue.md) | 网页编码/XHTML/正文兜底、失败原因与仅保存正文 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

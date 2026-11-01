@@ -117,7 +117,7 @@ def test_fetch_failure_marks_failed_without_real_network(
     db_session.expire_all()
     data = client.get(f"/api/v1/bookmarks/{bookmark_id}", headers=headers).json()["data"]
     assert data["status"] == "failed"
-    assert data["fail_reason"] == "网页抓取超时"
+    assert data["fail_reason"].startswith("网页抓取超时")
 
     retry = client.post(f"/api/v1/bookmarks/{bookmark_id}/retry", headers=headers)
     assert retry.status_code == 200
@@ -147,6 +147,26 @@ def test_manual_content_regenerates_summary(client: TestClient, db_session: Sess
     assert client.get("/api/v1/bookmarks/search?q=手动粘贴", headers=headers).json()[
         "data"
     ]["total"] == 1
+
+
+def test_manual_content_can_be_saved_without_calling_ai(client: TestClient) -> None:
+    headers, _ = auth_headers(client)
+    bookmark_id = create(client, headers)
+    llm = FakeLLMClient()
+    app.dependency_overrides[get_llm_client] = lambda: llm
+
+    response = client.put(
+        f"/api/v1/bookmarks/{bookmark_id}/content",
+        json={"content": "先保存原文，稍后再生成摘要", "generate_summary": False},
+        headers=headers,
+    )
+
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["status"] == "success"
+    assert data["summary"] is None
+    assert data["content"] == "先保存原文，稍后再生成摘要"
+    assert llm.calls == []
 
 
 def test_manual_content_keeps_text_when_ai_output_is_invalid(client: TestClient) -> None:

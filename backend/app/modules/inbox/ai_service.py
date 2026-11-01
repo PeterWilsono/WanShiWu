@@ -168,10 +168,13 @@ def regenerate_from_manual_content(
     bookmark = get_bookmark(db, user_id, bookmark_id)
     bookmark.content = data.content
     bookmark.summary = None
-    bookmark.status = BookmarkStatus.PROCESSING
+    bookmark.status = BookmarkStatus.PROCESSING if data.generate_summary else BookmarkStatus.SUCCESS
     bookmark.fail_reason = None
     upsert_bookmark_fts(db, bookmark)
     db.commit()
+    if not data.generate_summary:
+        db.refresh(bookmark)
+        return bookmark
     try:
         output = summarize_content(llm, bookmark.title, data.content)
         bookmark.summary = output.summary

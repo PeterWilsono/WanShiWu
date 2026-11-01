@@ -119,6 +119,7 @@ class TagListResponse(BaseModel):
 
 class ManualContentRequest(BaseModel):
     content: str = Field(min_length=1, max_length=100_000)
+    generate_summary: bool = True
 
     @field_validator("content")
     @classmethod

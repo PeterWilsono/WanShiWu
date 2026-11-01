@@ -45,10 +45,14 @@ export async function retryBookmark(id: number): Promise<Bookmark> {
   return response.data.data
 }
 
-export async function updateBookmarkContent(id: number, content: string): Promise<Bookmark> {
+export async function updateBookmarkContent(
+  id: number,
+  content: string,
+  generateSummary = true,
+): Promise<Bookmark> {
   const response = await http.put<ApiResponse<Bookmark>>(
     `/bookmarks/${id}/content`,
-    { content },
+    { content, generate_summary: generateSummary },
     { timeout: 100_000 },
   )
   return response.data.data

@@ -1,4 +1,4 @@
-"""受限网页抓取：SSRF 校验、重定向复查、超时与响应大小限制。"""
+"""受限网页抓取：SSRF 校验、重定向复查、编码识别与双层正文提取。"""
 
 import html
 import ipaddress
@@ -9,12 +9,19 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 import trafilatura
+from lxml import html as lxml_html
 
 from app.modules.inbox.schemas import normalize_url
 
 MAX_CONTENT_BYTES = 2 * 1024 * 1024
 MAX_REDIRECTS = 3
-USER_AGENT = "WanShiWuPersonalReader/1.0 (+personal bookmark archiving)"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 "
+    "WanShiWuPersonalReader/1.1"
+)
+HTML_CONTENT_TYPES = {"text/html", "application/xhtml+xml"}
+MANUAL_CONTENT_HINT = "请打开原文并手动粘贴正文"
 
 
 class FetchError(Exception):
@@ -60,14 +67,72 @@ def _html_title(document: str) -> str | None:
     return title[:300] or None
 
 
+def _decode_document(body: bytes, encoding: str | None) -> str:
+    declared = encoding
+    if not declared:
+        head = body[:4096].decode("ascii", errors="ignore")
+        match = re.search(r"charset=[\"']?([a-zA-Z0-9_-]+)", head, flags=re.I)
+        declared = match.group(1) if match else None
+    for candidate in (declared, "utf-8", "gb18030"):
+        if not candidate:
+            continue
+        try:
+            return body.decode(candidate)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return body.decode("utf-8", errors="replace")
+
+
+def _fallback_text(document: str) -> str | None:
+    """正文识别器失败时，从 article/main/body 提取可读文本并剔除明显噪声。"""
+    try:
+        root = lxml_html.fromstring(document)
+    except (ValueError, TypeError):
+        return None
+    noisy = "//script|//style|//noscript|//svg|//nav|//footer|//form|//aside"
+    for element in root.xpath(noisy):
+        parent = element.getparent()
+        if parent is not None:
+            parent.remove(element)
+    candidates = root.xpath("//article|//main")
+    target = max(candidates, key=lambda item: len(item.text_content()), default=None)
+    if target is None:
+        body = root.find("body")
+        target = body if body is not None else root
+    lines = [
+        re.sub(r"\s+", " ", line).strip()
+        for line in target.text_content().splitlines()
+        if line.strip()
+    ]
+    content = "\n".join(line for line in lines if line).strip()
+    return content if len(content) >= 40 else None
+
+
+def _extract_content(document: str) -> str | None:
+    extracted = trafilatura.extract(
+        document,
+        include_comments=False,
+        include_tables=True,
+        favor_recall=True,
+    )
+    if extracted and extracted.strip():
+        return extracted.strip()
+    return _fallback_text(document)
+
+
 def fetch_article(url: str) -> FetchedArticle:
     current = normalize_url(url)
     timeout = httpx.Timeout(10.0, connect=10.0, read=10.0, write=10.0, pool=10.0)
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.6",
+    }
     try:
         with httpx.Client(
             timeout=timeout,
             follow_redirects=False,
-            headers={"User-Agent": USER_AGENT, "Accept": "text/html"},
+            headers=headers,
         ) as client:
             for redirect_count in range(MAX_REDIRECTS + 1):
                 current = validate_public_url(current)
@@ -82,8 +147,9 @@ def fetch_article(url: str) -> FetchedArticle:
                         continue
                     response.raise_for_status()
                     content_type = response.headers.get("Content-Type", "").split(";", 1)[0]
-                    if content_type.lower() != "text/html":
-                        raise FetchError("只支持抓取 HTML 网页")
+                    content_type = content_type.strip().lower()
+                    if content_type and content_type not in HTML_CONTENT_TYPES:
+                        raise FetchError("只支持抓取 HTML 网页，PDF 或文件请下载后粘贴正文")
                     length = response.headers.get("Content-Length")
                     if length and int(length) > MAX_CONTENT_BYTES:
                         raise FetchError("网页内容超过 2MB 限制")
@@ -94,21 +160,31 @@ def fetch_article(url: str) -> FetchedArticle:
                         if size > MAX_CONTENT_BYTES:
                             raise FetchError("网页内容超过 2MB 限制")
                         chunks.append(chunk)
-                    document = b"".join(chunks).decode(
-                        response.encoding or "utf-8", errors="replace"
-                    )
-                    content = trafilatura.extract(
-                        document, include_comments=False, include_tables=False
-                    )
-                    if not content or not content.strip():
-                        raise FetchError("未能从网页提取正文，请手动粘贴")
-                    return FetchedArticle(title=_html_title(document), content=content.strip())
+                    body = b"".join(chunks)
+                    if not content_type and not re.match(
+                        rb"\s*(?:<!doctype\s+html|<html|<\?xml)", body, flags=re.I
+                    ):
+                        raise FetchError("网页没有返回可识别的 HTML 内容")
+                    document = _decode_document(body, response.encoding)
+                    content = _extract_content(document)
+                    if not content:
+                        raise FetchError(
+                            f"自动提取不到正文，网页可能需要登录、验证或动态渲染；{MANUAL_CONTENT_HINT}"
+                        )
+                    return FetchedArticle(title=_html_title(document), content=content)
     except FetchError:
         raise
     except httpx.TimeoutException as exc:
-        raise FetchError("网页抓取超时") from exc
+        raise FetchError(f"网页抓取超时，{MANUAL_CONTENT_HINT}") from exc
     except httpx.HTTPStatusError as exc:
-        raise FetchError(f"网页返回 HTTP {exc.response.status_code}") from exc
+        status = exc.response.status_code
+        if status in {401, 403}:
+            raise FetchError(
+                f"网站拒绝自动访问，可能需要登录或验证；{MANUAL_CONTENT_HINT}"
+            ) from exc
+        if status == 404:
+            raise FetchError("网页不存在或已被删除，请检查链接") from exc
+        raise FetchError(f"网页返回 HTTP {status}，{MANUAL_CONTENT_HINT}") from exc
     except (httpx.HTTPError, ValueError) as exc:
-        raise FetchError("网页抓取失败，请稍后重试或手动粘贴正文") from exc
+        raise FetchError(f"网页抓取失败，请稍后重试或{MANUAL_CONTENT_HINT}") from exc
     raise FetchError("网页抓取失败")

@@ -2,6 +2,7 @@
 
 import socket
 
+import httpx
 import pytest
 
 from app.modules.inbox import fetcher as fetcher_module
@@ -46,11 +47,11 @@ def test_rejects_hostname_when_any_dns_result_is_private(monkeypatch) -> None:
 
 
 class FakeResponse:
-    def __init__(self, status=200, headers=None, body=b"<html></html>"):
+    def __init__(self, status=200, headers=None, body=b"<html></html>", encoding="utf-8"):
         self.status_code = status
         self.headers = headers or {}
         self.body = body
-        self.encoding = "utf-8"
+        self.encoding = encoding
         self.is_redirect = status in {301, 302, 303, 307, 308}
 
     def __enter__(self):
@@ -60,7 +61,10 @@ class FakeResponse:
         return None
 
     def raise_for_status(self):
-        return None
+        if self.status_code >= 400:
+            request = httpx.Request("GET", "https://example.com/article")
+            response = httpx.Response(self.status_code, request=request)
+            raise httpx.HTTPStatusError("HTTP error", request=request, response=response)
 
     def iter_bytes(self):
         yield self.body
@@ -122,3 +126,56 @@ def test_rejects_non_html_and_oversized_responses(monkeypatch) -> None:
     ]
     with pytest.raises(FetchError, match="2MB"):
         fetch_article("https://example.com/large")
+
+
+def test_fallback_extracts_article_text_when_primary_extractor_fails(monkeypatch) -> None:
+    document = """
+    <html><head><title>静态文章</title></head><body>
+      <nav>导航首页和登录链接</nav>
+      <article><h1>清淡饮食</h1><p>这是一段足够长的正文内容，用来验证正文兜底提取能够保留真正文章。</p>
+      <p>第二个段落也应该被完整保存，方便后续生成摘要。</p></article>
+      <script>不应进入正文</script>
+    </body></html>
+    """
+    FakeClient.responses = [
+        FakeResponse(200, {"Content-Type": "application/xhtml+xml"}, document.encode())
+    ]
+    monkeypatch.setattr(fetcher_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(socket, "getaddrinfo", public_dns)
+    monkeypatch.setattr(fetcher_module.trafilatura, "extract", lambda *args, **kwargs: None)
+
+    article = fetch_article("https://example.com/xhtml")
+
+    assert "清淡饮食" in article.content
+    assert "第二个段落" in article.content
+    assert "导航首页" not in article.content
+    assert "不应进入正文" not in article.content
+
+
+def test_sniffs_missing_html_content_type_and_meta_charset(monkeypatch) -> None:
+    document = (
+        '<html><head><meta charset="gb18030"><title>中文网页</title></head>'
+        "<body>正文</body></html>"
+    )
+    FakeClient.responses = [
+        FakeResponse(200, {}, document.encode("gb18030"), encoding=None)
+    ]
+    monkeypatch.setattr(fetcher_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(socket, "getaddrinfo", public_dns)
+    monkeypatch.setattr(fetcher_module.trafilatura, "extract", lambda *args, **kwargs: "中文正文")
+
+    article = fetch_article("https://example.com/chinese")
+
+    assert article.title == "中文网页"
+    assert article.content == "中文正文"
+
+
+def test_access_denied_explains_manual_content_fallback(monkeypatch) -> None:
+    FakeClient.responses = [FakeResponse(403, {"Content-Type": "text/html"})]
+    monkeypatch.setattr(fetcher_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(socket, "getaddrinfo", public_dns)
+
+    with pytest.raises(FetchError, match="登录|验证") as caught:
+        fetch_article("https://example.com/private")
+
+    assert "手动粘贴正文" in str(caught.value)
