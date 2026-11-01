@@ -44,3 +44,4 @@ Thumbs.db
 # WorkBuddy 助手工作记忆与本地浏览器验收产物（不入库）
 .workbuddy/
 .playwright-cli/
+.cache/

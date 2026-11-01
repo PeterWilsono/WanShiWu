@@ -13,6 +13,7 @@ click==8.5.0
 colorama==0.4.6
 courlan==1.4.0
 coverage==7.17.0
+cryptography==46.0.3
 dateparser==1.4.3
 fastapi==0.162.0
 h11==0.16.0

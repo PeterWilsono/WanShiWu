@@ -12,9 +12,9 @@ from openai.types.chat import ChatCompletion
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
+from app.llm.config import resolve_llm_config
 from app.llm.models import LLMCallLog
 from app.modules.auth.models import User
 
@@ -48,10 +48,11 @@ class LLMClient:
     ) -> None:
         self.db = db
         self.user_id = user_id
+        self.config = resolve_llm_config(db, user_id, allow_placeholder=sdk_client is not None)
         self.sdk = sdk_client or OpenAI(
-            api_key=settings.llm_api_key,
-            base_url=settings.llm_base_url,
-            timeout=settings.llm_timeout_seconds,
+            api_key=self.config.api_key,
+            base_url=self.config.base_url,
+            timeout=self.config.timeout_seconds,
             max_retries=0,
         )
         self.sleep = sleep
@@ -72,7 +73,7 @@ class LLMClient:
         for attempt in range(3):
             try:
                 response = self.sdk.chat.completions.create(
-                    model=settings.llm_model,
+                    model=self.config.model,
                     messages=messages,
                     **self._optional_params(tools, response_format),
                 )
@@ -131,7 +132,7 @@ class LLMClient:
             )
             or 0
         )
-        if count >= settings.daily_llm_call_limit:
+        if count >= self.config.daily_call_limit:
             raise AppError(ErrorCode.LLM_DAILY_LIMIT, "今日 AI 调用次数已达上限，请明日再试", 429)
 
     def _to_result(self, response: ChatCompletion, latency_ms: int) -> LLMResult:
@@ -171,7 +172,7 @@ class LLMClient:
                 user_id=self.user_id,
                 module=module,
                 purpose=purpose,
-                model=settings.llm_model,
+                model=self.config.model,
                 prompt_tokens=result.prompt_tokens if result else 0,
                 completion_tokens=result.completion_tokens if result else 0,
                 latency_ms=(

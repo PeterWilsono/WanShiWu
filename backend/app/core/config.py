@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # ---- 大模型（OpenAI 兼容接口）----
     llm_base_url: str = "https://api.deepseek.com"
     llm_api_key: str = "your-api-key-here"
-    llm_model: str = "deepseek-chat"
+    llm_model: str = "deepseek-flash"
     llm_timeout_seconds: int = 30
     daily_llm_call_limit: int = 200
 

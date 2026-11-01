@@ -18,6 +18,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.inbox.router import router as inbox_router
 from app.modules.life.router import router as life_router
 from app.modules.pantry.router import router as pantry_router
+from app.modules.settings.router import router as settings_router
 from app.modules.trip.router import router as trip_router
 from app.scheduler.reminders import create_scheduler
 
@@ -53,6 +54,7 @@ app.include_router(life_router, prefix="/api/v1")
 app.include_router(assistant_router, prefix="/api/v1")
 app.include_router(pantry_router, prefix="/api/v1")
 app.include_router(trip_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
