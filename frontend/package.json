@@ -12,6 +12,7 @@
     "@fullcalendar/core": "^6.1.22",
     "@fullcalendar/daygrid": "^6.1.22",
     "@fullcalendar/interaction": "^6.1.22",
+    "@fullcalendar/moment-timezone": "^6.1.22",
     "@fullcalendar/vue3": "^6.1.22",
     "axios": "^1.21.0",
     "echarts": "^6.1.0",

@@ -44,7 +44,7 @@ const expenseCategories = computed(() =>
 )
 
 const pieOption = computed<EChartsCoreOption>(() => ({
-  color: ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#9b59b6', '#36a3a3', '#c45656'],
+  color: ['#183b32', '#c45b3f', '#c49a54', '#78917c', '#d29b7c', '#687f73', '#a8956c', '#94a78f'],
   tooltip: {
     trigger: 'item',
     confine: true,
@@ -68,7 +68,7 @@ const pieOption = computed<EChartsCoreOption>(() => ({
 }))
 
 const lineOption = computed<EChartsCoreOption>(() => ({
-  color: ['#409eff'],
+  color: ['#c45b3f'],
   tooltip: {
     trigger: 'axis',
     confine: true,
@@ -119,7 +119,6 @@ onMounted(loadStats)
           @change="loadStats"
         />
         <el-button @click="$router.push({ name: 'transactions' })">查看账目</el-button>
-        <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
       </div>
     </header>
 
@@ -190,5 +189,27 @@ onMounted(loadStats)
   .header-actions .el-date-editor { width: 100%; }
   .summary-grid { grid-template-columns: 1fr; }
   .summary-card strong { font-size: 24px; }
+}
+
+/* Editorial refinement */
+.stats-page { width: min(1280px, 100%); padding: 58px 36px 80px; }
+.page-header { align-items: flex-start; margin-bottom: 38px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.summary-grid { gap: 18px; margin-bottom: 20px; }
+.summary-card { position: relative; overflow: hidden; border-radius: 3px 20px 3px 3px; }
+.summary-card::after { position: absolute; right: -30px; bottom: -60px; width: 130px; height: 130px; border: 1px solid var(--line); border-radius: 50%; content: ''; opacity: .45; }
+.summary-card :deep(.el-card__body) { gap: 16px; padding: 26px; }
+.summary-card span { color: var(--ink-secondary); font-size: 11px; font-weight: 600; letter-spacing: .1em; }
+.summary-card strong { font-family: var(--font-display); font-size: clamp(28px, 3vw, 38px); font-weight: 600; letter-spacing: -.04em; }
+.summary-card .income { color: var(--vermilion); }
+.summary-card .negative { color: var(--success); }
+.chart-grid { gap: 20px; }
+.chart-grid :deep(.el-card__header strong) { font-family: var(--font-display); font-size: 18px; }
+@media (max-width: 700px) {
+  .stats-page { padding: 38px 18px 60px; }
+  .page-header h1 { font-size: 38px; }
+  .summary-grid { gap: 12px; }
+  .summary-card :deep(.el-card__body) { padding: 22px; }
 }
 </style>

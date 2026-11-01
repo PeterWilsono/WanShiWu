@@ -306,20 +306,27 @@ function toolName(tool: AssistantTool): string {
 
 <style scoped>
 .assistant { width: 100%; text-align: left; }
-.assistant__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.assistant__heading h2 { margin: 0; font-size: 20px; }
-.assistant__heading span, .assistant__parse-row span { color: #909399; font-size: 13px; }
-.assistant__parse-row, .assistant__confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.assistant__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.assistant__heading h2 { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+.assistant__heading span, .assistant__parse-row span { color: var(--ink-muted); font-size: 10px; line-height: 1.6; }
+.assistant :deep(.el-textarea__inner) { min-height: 100px !important; border: 0; background: var(--paper); font-size: 14px; resize: vertical; }
+.assistant__parse-row, .assistant__confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.assistant__parse-row .el-button { min-width: 96px; }
 .assistant__message { margin-top: 16px; }
-.assistant__drafts { margin-top: 18px; }
+.assistant__drafts { margin-top: 22px; }
+.draft-card { background: var(--paper); box-shadow: none; }
 .draft-card + .draft-card { margin-top: 12px; }
 .draft-card__header { display: flex; justify-content: space-between; }
-.draft-card__header span { color: #909399; font-size: 13px; }
+.draft-card__header strong { font-family: var(--font-display); font-size: 17px; }
+.draft-card__header span { color: var(--ink-muted); font-size: 12px; }
 .draft-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .full-width { width: 100%; }
 .assistant__confirm-row { justify-content: flex-end; }
 @media (max-width: 640px) {
-  .assistant__heading { align-items: flex-start; flex-direction: column; }
+  .assistant__heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .assistant__parse-row > span { display: none; }
+  .assistant__parse-row { justify-content: flex-end; }
   .draft-form__grid { grid-template-columns: 1fr; gap: 0; }
+  .assistant__confirm-row { align-items: stretch; flex-direction: column-reverse; }
 }
 </style>

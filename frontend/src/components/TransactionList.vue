@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Transaction } from '../types/transaction'
 import { formatDateTime } from '../utils/time'
+import CategoryIcon from './CategoryIcon.vue'
 import MoneyText from './MoneyText.vue'
 
 defineProps<{
@@ -24,7 +25,7 @@ const sourceLabels: Record<Transaction['source'], string> = {
 <template>
   <div class="transaction-list">
     <article v-for="item in items" :key="item.id" class="transaction-card">
-      <div class="category-icon" aria-hidden="true">{{ item.category.icon || '账' }}</div>
+      <div class="category-icon" aria-hidden="true"><CategoryIcon :icon="item.category.icon" :name="item.category.name" /></div>
       <div class="transaction-main">
         <div class="transaction-title">
           <h2>{{ item.category.name }}</h2>
@@ -142,4 +143,15 @@ const sourceLabels: Record<Transaction['source'], string> = {
     justify-items: start;
   }
 }
+
+/* Editorial refinement */
+.transaction-list { gap: 14px; }
+.transaction-card { padding: 22px 24px; border-color: var(--line-soft); border-radius: 3px 20px 3px 3px; background: var(--paper-light); transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.transaction-card:hover { border-color: var(--line); box-shadow: var(--shadow-soft); transform: translateY(-2px); }
+.category-icon { width: 46px; height: 46px; border-radius: 14px 14px 14px 4px; color: var(--ink); background: var(--paper-deep); font-family: var(--font-display); }
+.transaction-title h2 { font-family: var(--font-display); font-size: 19px; }
+.transaction-time, .transaction-source { color: var(--ink-muted); }
+.transaction-note { color: var(--ink-secondary); }
+.transaction-side :deep(.money-text) { font-family: var(--font-display); font-size: 23px; letter-spacing: -.03em; }
+@media (max-width: 640px) { .transaction-card { padding: 20px; } }
 </style>

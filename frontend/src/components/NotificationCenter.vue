@@ -7,6 +7,7 @@ import { ApiError } from '../api/http'
 import { listUnreadNotifications, markNotificationRead } from '../api/notifications'
 import { useAuthStore } from '../stores/auth'
 import type { AppNotification } from '../types/notification'
+import AppIcon from './AppIcon.vue'
 import { formatDateTime } from '../utils/time'
 
 const POLL_INTERVAL_MS = 30_000
@@ -92,7 +93,9 @@ onBeforeUnmount(() => {
     >
       <template #reference>
         <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0">
-          <el-button aria-label="未读通知">通知</el-button>
+          <button class="notification-trigger" aria-label="未读通知" :class="{ 'has-unread': unreadCount > 0 }">
+            <AppIcon name="bell" :size="20" />
+          </button>
         </el-badge>
       </template>
       <section class="notification-panel" aria-live="polite">
@@ -143,16 +146,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.notification-center { position: fixed; z-index: 1000; top: 16px; right: 20px; }
-.panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.notification-center { position: relative; }
+.notification-trigger { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid transparent; border-radius: 50%; color: var(--ink-secondary); background: transparent; cursor: pointer; transition: color .2s ease, background .2s ease, transform .2s ease; }
+.notification-trigger:hover { color: var(--ink); background: var(--paper-deep); transform: translateY(-1px); }
+.notification-trigger.has-unread { color: var(--vermilion); }
+.notification-center :deep(.el-badge__content) { top: 5px; right: 8px; height: 16px; min-width: 16px; padding: 0 4px; border: 2px solid var(--paper); background: var(--vermilion); font-size: 9px; line-height: 12px; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.panel-header strong { font-family: var(--font-display); font-size: 20px; }
 .load-alert { margin-bottom: 10px; }
 .notification-list { display: grid; gap: 8px; max-height: 420px; overflow-y: auto; }
-.notification-item { padding: 12px; border: 1px solid #ebeef5; border-radius: 8px; }
-.notification-message { color: #303133; line-height: 1.5; white-space: pre-wrap; }
-.notification-content time { display: block; margin-top: 5px; color: #909399; font-size: 12px; }
-.notification-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
-.panel-hint { margin-top: 12px; color: #909399; font-size: 12px; text-align: center; }
-@media (max-width: 520px) {
-  .notification-center { top: 10px; right: 10px; }
-}
+.notification-item { padding: 15px; border: 1px solid var(--line-soft); border-radius: 14px; background: var(--paper); }
+.notification-message { color: var(--ink); line-height: 1.65; white-space: pre-wrap; }
+.notification-content time { display: block; margin-top: 6px; color: var(--ink-muted); font-size: 12px; }
+.notification-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.panel-hint { margin-top: 14px; color: var(--ink-muted); font-size: 11px; text-align: center; }
 </style>

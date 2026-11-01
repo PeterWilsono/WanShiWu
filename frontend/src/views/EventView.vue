@@ -255,7 +255,6 @@ onMounted(loadEvents)
         <p class="page-subtitle">安排明确的时间，也给临时变化留出空间。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
         <el-button @click="$router.push({ name: 'calendar' })">月历视图</el-button>
         <el-button type="primary" @click="openCreate">新建日程</el-button>
       </div>
@@ -610,5 +609,29 @@ onMounted(loadEvents)
     justify-content: center;
     overflow-x: auto;
   }
+}
+
+/* Editorial refinement */
+.event-page { width: min(1240px, 100%); padding: 58px 36px 80px; }
+.page-header { margin-bottom: 38px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.filter-card { margin-bottom: 28px; border: 1px solid var(--line-soft); background: rgb(251 250 246 / 58%); box-shadow: none; }
+.filter-card :deep(.el-card__body) { padding: 18px; }
+.filter-hint { color: var(--ink-muted); font-size: 11px; }
+.list-summary { margin-bottom: 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; }
+.event-list { gap: 14px; }
+.event-card { position: relative; padding: 25px 26px; border-color: var(--line-soft); border-radius: 3px 20px 3px 3px; background: var(--paper-light); transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.event-card::before { position: absolute; top: 26px; bottom: 26px; left: 0; width: 2px; background: var(--vermilion); content: ''; opacity: .6; }
+.event-card:hover { border-color: var(--line); box-shadow: var(--shadow-soft); transform: translateY(-2px); }
+.event-card h2 { font-family: var(--font-display); font-size: 21px; font-weight: 600; }
+.event-time { color: var(--vermilion); font-size: 13px; }
+.event-location, .event-note { color: var(--ink-secondary); }
+.event-actions .el-button { min-height: 34px; padding: 7px 14px; font-size: 12px; }
+@media (max-width: 700px) {
+  .event-page { padding: 38px 18px 60px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 38px; }
+  .event-card { padding: 22px 20px; }
 }
 </style>

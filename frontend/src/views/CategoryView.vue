@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import { deleteCategory, listCategories } from '../api/categories'
 import { ApiError } from '../api/http'
 import CategoryFormDialog from '../components/CategoryFormDialog.vue'
+import CategoryIcon from '../components/CategoryIcon.vue'
 import type { Category, TransactionType } from '../types/category'
 
 const categories = ref<Category[]>([])
@@ -117,7 +118,7 @@ onMounted(loadCategories)
       </el-empty>
       <div v-else class="category-grid">
         <article v-for="category in visibleCategories" :key="category.id" class="category-card">
-          <div class="category-icon" aria-hidden="true">{{ category.icon || '类' }}</div>
+          <div class="category-icon" aria-hidden="true"><CategoryIcon :icon="category.icon" :name="category.name" /></div>
           <div class="category-info">
             <div class="category-name">
               <h2>{{ category.name }}</h2>
@@ -195,5 +196,22 @@ onMounted(loadCategories)
 @media (max-width: 480px) {
   .category-card { grid-template-columns: auto minmax(0, 1fr); }
   .category-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+/* Editorial refinement */
+.category-page { width: min(1160px, 100%); padding: 58px 36px 80px; }
+.page-header { align-items: flex-start; margin-bottom: 34px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.rule-alert { margin: 0 0 24px; background: rgb(251 250 246 / 60%); }
+.category-grid { gap: 16px; }
+.category-card { padding: 22px; border-color: var(--line-soft); border-radius: 3px 18px 3px 3px; background: var(--paper-light); transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.category-card:hover { border-color: var(--line); box-shadow: var(--shadow-soft); transform: translateY(-2px); }
+.category-icon { width: 44px; height: 44px; border-radius: 13px 13px 13px 4px; color: var(--ink); background: var(--paper-deep); font-family: var(--font-display); }
+.category-name h2 { font-family: var(--font-display); font-size: 19px; }
+.category-info p { color: var(--ink-muted); }
+@media (max-width: 760px) {
+  .category-page { padding: 38px 18px 60px; }
+  .page-header h1 { font-size: 38px; }
 }
 </style>

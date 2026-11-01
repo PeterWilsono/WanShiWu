@@ -254,7 +254,6 @@ onMounted(loadTodos)
         <p class="page-subtitle">把要做的事放在这里，一次只专注下一步。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
         <el-button type="primary" @click="openCreate">新建待办</el-button>
       </div>
     </header>
@@ -642,5 +641,29 @@ onMounted(loadTodos)
     justify-content: center;
     overflow-x: auto;
   }
+}
+
+/* Editorial refinement */
+.todo-page { width: min(1240px, 100%); padding: 58px 36px 80px; }
+.page-header { margin-bottom: 38px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.filter-card { margin-bottom: 28px; border: 1px solid var(--line-soft); background: rgb(251 250 246 / 58%); box-shadow: none; }
+.filter-card :deep(.el-card__body) { padding: 18px; }
+.list-summary { margin-bottom: 18px; color: var(--ink-muted); font-size: 11px; font-weight: 600; letter-spacing: .1em; }
+.todo-list { gap: 14px; }
+.todo-card { position: relative; padding: 25px 26px; border-color: var(--line-soft); border-radius: 3px 20px 3px 3px; background: var(--paper-light); transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.todo-card::before { position: absolute; top: 26px; bottom: 26px; left: 0; width: 2px; background: var(--sage); content: ''; opacity: 0; transition: opacity .25s ease; }
+.todo-card:hover { border-color: var(--line); box-shadow: var(--shadow-soft); transform: translateY(-2px); }
+.todo-card:hover::before { opacity: 1; }
+.todo-card h2 { font-family: var(--font-display); font-size: 21px; font-weight: 600; }
+.todo-note { color: var(--ink-secondary); font-size: 14px; }
+.todo-meta { color: var(--ink-muted); font-size: 12px; }
+.todo-actions .el-button { min-height: 34px; padding: 7px 14px; font-size: 12px; }
+@media (max-width: 640px) {
+  .todo-page { padding: 38px 18px 60px; }
+  .page-header { gap: 20px; margin-bottom: 28px; }
+  .page-header h1 { font-size: 38px; }
+  .todo-card { padding: 22px 20px; }
 }
 </style>

@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior: () => ({ top: 0, behavior: 'smooth' }),
   routes: [
     {
       path: '/',

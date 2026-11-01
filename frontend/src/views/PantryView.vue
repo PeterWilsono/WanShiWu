@@ -91,6 +91,13 @@ function messageOf(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback
 }
 
+function formatQuantity(value: string): string {
+  const [integer, fraction] = value.split('.')
+  if (!fraction) return value
+  const trimmed = fraction.replace(/0+$/, '')
+  return trimmed ? `${integer}.${trimmed}` : integer
+}
+
 async function loadInventory(): Promise<void> {
   inventoryLoading.value = true
   inventoryError.value = ''
@@ -228,7 +235,7 @@ async function saveConsume(): Promise<void> {
       unit: source.unit,
       quantity: consumeQuantity.value,
     })
-    ElMessage.success(`已扣减 ${result.consumed_quantity}${result.unit}，剩余 ${result.remaining_stock}${result.unit}`)
+    ElMessage.success(`已扣减 ${formatQuantity(result.consumed_quantity)}${result.unit}，剩余 ${formatQuantity(result.remaining_stock)}${result.unit}`)
     consumeDialog.value = false
     await Promise.all([loadInventory(), loadExpiring()])
   } catch (error) {
@@ -343,7 +350,6 @@ onMounted(() => {
         <h1>库存与购物清单</h1>
         <p class="page-subtitle">按批次管理保质期，消耗时自动先扣最早过期的食材。</p>
       </div>
-      <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
     </header>
 
     <el-tabs v-model="activeTab" class="pantry-tabs">
@@ -370,7 +376,7 @@ onMounted(() => {
                   <el-tag v-if="item.expire_on" size="small" type="warning">{{ item.expire_on }} 到期</el-tag>
                   <el-tag v-else size="small" type="info">无保质期</el-tag>
                 </div>
-                <p class="ingredient-quantity">{{ item.quantity }} <small>{{ item.unit }}</small></p>
+                <p class="ingredient-quantity">{{ formatQuantity(item.quantity) }} <small>{{ item.unit }}</small></p>
                 <p class="ingredient-meta">购买日：{{ item.purchased_on || '未记录' }}</p>
                 <p v-if="item.note" class="ingredient-note">{{ item.note }}</p>
                 <div class="card-actions">
@@ -406,7 +412,7 @@ onMounted(() => {
             <h2>已过期（{{ expiring.expired.length }}）</h2>
             <el-table v-if="expiring.expired.length" :data="expiring.expired">
               <el-table-column prop="name" label="食材" min-width="120" />
-              <el-table-column label="剩余" min-width="110"><template #default="{ row }">{{ row.quantity }}{{ row.unit }}</template></el-table-column>
+              <el-table-column label="剩余" min-width="110"><template #default="{ row }">{{ formatQuantity(row.quantity) }}{{ row.unit }}</template></el-table-column>
               <el-table-column prop="expire_on" label="过期日" min-width="120" />
               <el-table-column min-width="130"><template #default="{ row }"><el-tag type="danger">{{ expiryLabel(row.days_to_expire) }}</el-tag></template></el-table-column>
             </el-table>
@@ -416,7 +422,7 @@ onMounted(() => {
             <h2>即将到期（{{ expiring.expiring.length }}）</h2>
             <el-table v-if="expiring.expiring.length" :data="expiring.expiring">
               <el-table-column prop="name" label="食材" min-width="120" />
-              <el-table-column label="剩余" min-width="110"><template #default="{ row }">{{ row.quantity }}{{ row.unit }}</template></el-table-column>
+              <el-table-column label="剩余" min-width="110"><template #default="{ row }">{{ formatQuantity(row.quantity) }}{{ row.unit }}</template></el-table-column>
               <el-table-column prop="expire_on" label="过期日" min-width="120" />
               <el-table-column min-width="130"><template #default="{ row }"><el-tag type="warning">{{ expiryLabel(row.days_to_expire) }}</el-tag></template></el-table-column>
             </el-table>
@@ -443,7 +449,7 @@ onMounted(() => {
             <el-table-column min-width="150" label="物品">
               <template #default="{ row }"><span :class="{ 'item-done': row.done }">{{ row.name }}</span></template>
             </el-table-column>
-            <el-table-column min-width="110" label="数量"><template #default="{ row }">{{ row.quantity ? `${row.quantity}${row.unit || ''}` : '未填写' }}</template></el-table-column>
+            <el-table-column min-width="110" label="数量"><template #default="{ row }">{{ row.quantity ? `${formatQuantity(row.quantity)}${row.unit || ''}` : '未填写' }}</template></el-table-column>
             <el-table-column min-width="140" label="来源"><template #default="{ row }">{{ row.source === 'recipe' ? `菜谱：${row.recipe_name || '未命名'}` : '手动添加' }}</template></el-table-column>
             <el-table-column width="150" label="操作" fixed="right">
               <template #default="{ row }">
@@ -544,5 +550,33 @@ onMounted(() => {
   .ingredient-grid, .form-grid { grid-template-columns: 1fr; }
   .toolbar .el-select { width: 150px; }
   .pagination { justify-content: center; }
+}
+
+/* Editorial refinement */
+.pantry-page { width: min(1280px, 100%); padding: 58px 36px 80px; }
+.page-header { margin-bottom: 32px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.pantry-tabs { padding: 0 4px; }
+.toolbar { margin: 24px 0; }
+.storage-group { margin-bottom: 38px; }
+.storage-group h2, .expiry-section h2 { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+.ingredient-grid { gap: 18px; }
+.ingredient-card { position: relative; overflow: hidden; border-radius: 3px 20px 3px 3px; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.ingredient-card::after { position: absolute; top: -35px; right: -35px; width: 90px; height: 90px; border: 1px solid var(--line); border-radius: 50%; content: ''; opacity: .5; }
+.ingredient-card:hover { border-color: var(--line); box-shadow: var(--shadow-lift); transform: translateY(-4px); }
+.ingredient-title strong { font-family: var(--font-display); font-size: 20px; }
+.ingredient-quantity { margin: 25px 0 12px; color: var(--ink); font-family: var(--font-display); font-size: 36px; font-weight: 500; letter-spacing: -.04em; }
+.ingredient-meta, .ingredient-note { color: var(--ink-muted); line-height: 1.7; }
+.card-actions { gap: 8px; }
+.expiry-section { padding: 24px; border-color: var(--line-soft); border-radius: 3px 20px 3px 3px; background: var(--paper-light); }
+.expired-section { border-left: 3px solid var(--danger); }
+.expiring-section { border-left: 3px solid var(--gold); }
+.empty-line { color: var(--ink-muted); font-size: 13px; }
+@media (max-width: 640px) {
+  .pantry-page { padding: 38px 18px 60px; }
+  .page-header h1 { font-size: 36px; }
+  .pantry-tabs { padding: 0; }
+  .expiry-section { padding: 16px; }
 }
 </style>

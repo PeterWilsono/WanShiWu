@@ -37,7 +37,10 @@ onBeforeUnmount(() => {
   right: 24px;
   bottom: 24px;
   width: min(520px, calc(100vw - 32px));
-  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-light);
+  box-shadow: var(--shadow-lift);
 }
 @media (max-width: 700px) {
   .network-status { right: 16px; bottom: 16px; }

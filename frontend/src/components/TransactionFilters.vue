@@ -111,4 +111,7 @@ function update(patch: TransactionListQuery): void {
     grid-template-columns: 1fr;
   }
 }
+
+.filter-card { margin-bottom: 28px; border: 1px solid var(--line-soft); background: rgb(251 250 246 / 58%); box-shadow: none; }
+.filter-card :deep(.el-card__body) { padding: 18px; }
 </style>

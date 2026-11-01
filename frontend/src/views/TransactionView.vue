@@ -133,7 +133,6 @@ onMounted(() => {
         <p class="page-subtitle">记录每一笔收支，金额始终以整数分保存。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
         <el-button @click="$router.push({ name: 'stats' })">月度统计</el-button>
         <el-button @click="$router.push({ name: 'categories' })">分类管理</el-button>
         <el-button type="primary" @click="openCreate">记一笔</el-button>
@@ -215,5 +214,16 @@ onMounted(() => {
   .header-actions { width: 100%; flex-wrap: wrap; }
   .header-actions .el-button { flex: 1; }
   .pagination { justify-content: center; overflow-x: auto; }
+}
+
+/* Editorial refinement */
+.transaction-page { width: min(1280px, 100%); padding: 58px 36px 80px; }
+.page-header { align-items: flex-start; margin-bottom: 38px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.list-summary { margin-bottom: 18px; font-size: 11px; font-weight: 600; letter-spacing: .1em; }
+@media (max-width: 700px) {
+  .transaction-page { padding: 38px 18px 60px; }
+  .page-header h1 { font-size: 38px; }
 }
 </style>

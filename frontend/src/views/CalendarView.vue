@@ -8,6 +8,7 @@ import type {
 import zhCnLocale from '@fullcalendar/core/locales/zh-cn'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import momentTimezonePlugin from '@fullcalendar/moment-timezone'
 import FullCalendar from '@fullcalendar/vue3'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -53,7 +54,7 @@ function eventInput(event: LifeEvent): EventInput {
     start: event.start_at,
     end: event.end_at || undefined,
     allDay: event.all_day,
-    color: '#409eff',
+    color: '#315f52',
     extendedProps: {
       details: {
         kind: 'event', title: event.title, startAt: event.start_at, endAt: event.end_at,
@@ -69,7 +70,7 @@ function todoInput(todo: Todo): EventInput | null {
     id: `todo-${todo.id}`,
     title: `待办：${todo.title}`,
     start: todo.due_at,
-    color: '#e6a23c',
+    color: '#c49a54',
     classNames: ['calendar-todo', `todo-${todo.status}`],
     extendedProps: {
       details: {
@@ -127,7 +128,7 @@ function openManager(): void {
 }
 
 const calendarOptions: CalendarOptions = {
-  plugins: [dayGridPlugin, interactionPlugin],
+  plugins: [dayGridPlugin, interactionPlugin, momentTimezonePlugin],
   initialView: 'dayGridMonth',
   locale: zhCnLocale,
   timeZone: timeZone.value,
@@ -153,7 +154,6 @@ const calendarOptions: CalendarOptions = {
       <div class="header-actions">
         <el-button @click="$router.push({ name: 'events' })">管理日程</el-button>
         <el-button @click="$router.push({ name: 'todos' })">管理待办</el-button>
-        <el-button @click="$router.push({ name: 'home' })">返回首页</el-button>
       </div>
     </header>
 
@@ -210,5 +210,26 @@ const calendarOptions: CalendarOptions = {
   .calendar-card :deep(.fc-toolbar) { flex-wrap: wrap; gap: 10px; }
   .calendar-card :deep(.fc-toolbar-title) { font-size: 20px; }
   .calendar-card :deep(.fc-daygrid-day-number), .calendar-card :deep(.fc-col-header-cell-cushion) { font-size: 12px; }
+}
+
+/* Editorial refinement */
+.calendar-page { width: min(1280px, 100%); padding: 58px 36px 80px; }
+.page-header { align-items: flex-start; margin-bottom: 38px; }
+.page-header h1 { margin-bottom: 12px; font-size: 44px; }
+.page-subtitle { font-size: 14px; }
+.calendar-card { min-height: 600px; padding: 26px; border: 1px solid var(--line-soft); border-radius: 3px 24px 3px 3px; background: var(--paper-light); box-shadow: var(--shadow-soft); }
+.calendar-card :deep(.fc) { --fc-border-color: var(--line-soft); --fc-button-bg-color: var(--ink); --fc-button-border-color: var(--ink); --fc-today-bg-color: #ede9dc; --fc-page-bg-color: var(--paper-light); --fc-neutral-bg-color: var(--paper-deep); --fc-list-event-hover-bg-color: var(--paper-deep); font-size: 13px; }
+.calendar-card :deep(.fc-toolbar-title) { font-family: var(--font-display); font-size: 27px; font-weight: 600; }
+.calendar-card :deep(.fc-button) { border-radius: 99px; box-shadow: none; font-size: 12px; }
+.calendar-card :deep(.fc-button-group .fc-button) { border-radius: 0; }
+.calendar-card :deep(.fc-col-header-cell-cushion), .calendar-card :deep(.fc-daygrid-day-number) { padding: 10px; color: var(--ink-secondary); }
+.calendar-card :deep(.fc-daygrid-day-number) { font-family: var(--font-display); }
+.calendar-card :deep(.fc-event) { padding: 2px 4px; border: 0; border-radius: 5px; cursor: pointer; transition: transform .15s ease; }
+.calendar-card :deep(.fc-event:hover) { transform: translateY(-1px); }
+@media (max-width: 700px) {
+  .calendar-page { padding: 38px 12px 60px; }
+  .page-header { padding: 0 6px; }
+  .page-header h1 { font-size: 38px; }
+  .calendar-card { padding: 14px 4px; }
 }
 </style>

@@ -1,25 +1,143 @@
-/* 全局基础样式（阶段 0 最小版），UI 主体由 Element Plus 承担 */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-}
+@charset "UTF-8";
 
-body {
-  font-family:
-    'Helvetica Neue',
-    Helvetica,
-    'PingFang SC',
-    'Hiragino Sans GB',
-    'Microsoft YaHei',
-    Arial,
-    sans-serif;
+:root {
+  --paper: #f4f1e9;
+  --paper-light: #fbfaf6;
+  --paper-deep: #e9e4d8;
+  --ink: #183b32;
+  --ink-secondary: #50635c;
+  --ink-muted: #7b867f;
+  --vermilion: #c45b3f;
+  --vermilion-dark: #a8442e;
+  --sage: #94a78f;
+  --gold: #c49a54;
+  --line: #d8d7cb;
+  --line-soft: rgb(24 59 50 / 10%);
+  --success: #3f7560;
+  --danger: #b84d43;
+  --font-body: Inter, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, serif;
+  --shadow-soft: 0 18px 50px rgb(36 48 40 / 5%);
+  --shadow-lift: 0 24px 64px rgb(36 48 40 / 10%);
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 30px;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  color: #303133;
-  background-color: #f5f7fa;
+  --el-color-primary: #183b32;
+  --el-color-primary-light-3: #506e63;
+  --el-color-primary-light-5: #82988e;
+  --el-color-primary-light-7: #b7c5bc;
+  --el-color-primary-light-8: #d2dcd4;
+  --el-color-primary-light-9: #e8ede8;
+  --el-color-primary-dark-2: #102c25;
+  --el-color-success: #3f7560;
+  --el-color-warning: #b9823f;
+  --el-color-danger: #b84d43;
+  --el-color-error: #b84d43;
+  --el-color-info: #6d7c74;
+  --el-text-color-primary: #183b32;
+  --el-text-color-regular: #42584f;
+  --el-text-color-secondary: #6c7a73;
+  --el-text-color-placeholder: #9a9f96;
+  --el-border-color: #d8d7cb;
+  --el-border-color-light: #e4e2d8;
+  --el-border-color-lighter: #ebe8df;
+  --el-fill-color-light: #f1eee5;
+  --el-fill-color-lighter: #f7f5ee;
+  --el-bg-color: #fbfaf6;
+  --el-bg-color-overlay: #fbfaf6;
+  --el-border-radius-base: 10px;
+  --el-font-family: var(--font-body);
 }
 
-#app {
-  min-height: 100vh;
+*, *::before, *::after { box-sizing: border-box; margin: 0; }
+html { min-width: 320px; scroll-behavior: smooth; }
+body { min-width: 320px; min-height: 100vh; background: var(--paper); }
+body::before { position: fixed; z-index: -1; inset: 0; background: radial-gradient(circle at 8% 12%, rgb(196 154 84 / 7%), transparent 27%), radial-gradient(circle at 88% 22%, rgb(148 167 143 / 10%), transparent 30%); content: ''; pointer-events: none; }
+button, input, textarea, select { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--vermilion); outline-offset: 4px; }
+a { color: inherit; text-decoration: none; }
+::selection { color: var(--paper-light); background: var(--vermilion); }
+#app { min-height: 100vh; }
+
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+/* Shared editorial page heading. */
+.page-header { position: relative; }
+.page-header h1 { font-family: var(--font-display); font-weight: 600; letter-spacing: -.04em; }
+.page-eyebrow { color: var(--vermilion) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .22em !important; text-transform: uppercase; }
+.page-subtitle { color: var(--ink-secondary) !important; }
+.header-actions .el-button { min-height: 40px; }
+
+/* Element Plus is the interaction layer; the visual layer is our own. */
+.el-button { min-height: 38px; padding: 9px 18px; border-radius: 999px; font-weight: 550; letter-spacing: .02em; transition: color .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.el-button:not(.is-disabled):hover { transform: translateY(-1px); }
+.el-button:not(.is-disabled):active { transform: translateY(0) scale(.98); }
+.el-button--primary { border-color: var(--ink); background: var(--ink); box-shadow: 0 6px 16px rgb(24 59 50 / 10%); }
+.el-button--primary:not(.is-disabled):hover { border-color: var(--vermilion); background: var(--vermilion); box-shadow: 0 8px 22px rgb(196 91 63 / 18%); }
+.el-button--primary.is-plain { color: var(--ink); border-color: var(--line); background: transparent; box-shadow: none; }
+.el-button--primary.is-plain:hover { color: var(--paper-light); }
+.el-button.is-text { min-height: 30px; padding: 5px 8px; box-shadow: none; }
+.el-button + .el-button { margin-left: 0; }
+.el-card { border-color: var(--line-soft); border-radius: var(--radius-md); background: var(--paper-light); box-shadow: var(--shadow-soft); }
+.el-card__header { padding: 20px 24px; border-bottom-color: var(--line-soft); }
+.el-card__body { padding: 24px; }
+.el-input__wrapper, .el-textarea__inner, .el-select__wrapper { border-radius: 11px; background-color: var(--paper-light); box-shadow: 0 0 0 1px var(--line) inset; transition: box-shadow .2s ease, background .2s ease; }
+.el-input__wrapper { min-height: 42px; padding: 1px 14px; }
+.el-textarea__inner { padding: 13px 15px; line-height: 1.7; }
+.el-select__wrapper { min-height: 42px; padding: 4px 14px; }
+.el-input__wrapper.is-focus, .el-select__wrapper.is-focused, .el-textarea__inner:focus { box-shadow: 0 0 0 1px var(--ink) inset, 0 0 0 4px rgb(24 59 50 / 6%) !important; }
+.el-form-item__label { padding-bottom: 7px !important; color: var(--ink-secondary); font-size: 13px; font-weight: 550; }
+.el-form-item { margin-bottom: 20px; }
+.el-radio-button__inner { border-radius: 0; }
+.el-dialog { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 24px; background: var(--paper-light); box-shadow: 0 30px 100px rgb(24 40 32 / 22%); }
+.el-dialog__header { padding: 26px 28px 18px; border-bottom: 1px solid var(--line-soft); }
+.el-dialog__title { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+.el-dialog__body { padding: 24px 28px; }
+.el-dialog__footer { padding: 18px 28px 24px; }
+.el-overlay { backdrop-filter: blur(5px); }
+.el-message { border-color: var(--line); border-radius: 14px; background: var(--paper-light); box-shadow: var(--shadow-lift); }
+.el-alert { border: 1px solid var(--line-soft); border-radius: 13px; }
+.el-tag { border-radius: 99px; font-weight: 500; }
+.el-empty__description p { color: var(--ink-muted); }
+.el-loading-mask { border-radius: inherit; background-color: rgb(244 241 233 / 76%); backdrop-filter: blur(3px); }
+.el-pagination { --el-pagination-button-bg-color: transparent; --el-pagination-hover-color: var(--vermilion); }
+.el-pagination button, .el-pager li { border-radius: 50%; }
+.el-tabs__item { height: 52px; color: var(--ink-secondary); font-size: 15px; }
+.el-tabs__item.is-active, .el-tabs__item:hover { color: var(--vermilion); }
+.el-tabs__active-bar { background: var(--vermilion); }
+.el-tabs__nav-wrap::after { height: 1px; background: var(--line); }
+.el-table { --el-table-border-color: var(--line-soft); --el-table-header-bg-color: var(--paper-light); --el-table-row-hover-bg-color: #f1eee5; border-radius: 16px; }
+.el-table th.el-table__cell { color: var(--ink-secondary); font-size: 12px; font-weight: 600; letter-spacing: .06em; }
+.el-descriptions { --el-descriptions-item-bordered-label-background: var(--paper-deep); }
+.el-popper.is-light { border-color: var(--line); border-radius: 16px; background: var(--paper-light); box-shadow: var(--shadow-lift); }
+.el-dropdown-menu__item { border-radius: 8px; }
+.el-result { padding: 28px 16px; }
+.el-result__title p { font-family: var(--font-display); }
+
+.page-enter-active { transition: opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1); }
+.page-leave-active { transition: opacity .14s ease; }
+.page-enter-from { opacity: 0; transform: translateY(10px); }
+.page-leave-to { opacity: 0; }
+
+@media (max-width: 700px) {
+  .el-card__body { padding: 20px; }
+  .el-dialog { width: calc(100vw - 24px) !important; margin-top: 5vh !important; border-radius: 20px; }
+  .el-dialog__header { padding: 22px 20px 16px; }
+  .el-dialog__body { max-height: 68vh; overflow-y: auto; padding: 20px; }
+  .el-dialog__footer { padding: 16px 20px 20px; }
+  .el-message { width: calc(100vw - 32px); min-width: 0; }
+  .el-pagination .el-select, .el-pagination .el-pagination__sizes { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
