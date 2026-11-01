@@ -2,12 +2,18 @@ import { http } from './http'
 import type { ApiResponse } from '../types/api'
 import type {
   ConsumeResult,
+  CookRequest,
+  CookResult,
   ExpiringResult,
   Ingredient,
   IngredientListQuery,
   IngredientPayload,
   IngredientUnit,
   Page,
+  Recipe,
+  RecipeIngredient,
+  RecipeRecommendRequest,
+  RecipeShoppingResult,
   ShoppingItem,
   ShoppingItemPayload,
   ShoppingListQuery,
@@ -41,6 +47,31 @@ export async function consumeIngredient(data: {
   unit: IngredientUnit
 }): Promise<ConsumeResult> {
   const response = await http.post<ApiResponse<ConsumeResult>>('/ingredients/consume', data)
+  return response.data.data
+}
+
+export async function recommendRecipes(data: RecipeRecommendRequest): Promise<Recipe[]> {
+  const response = await http.post<ApiResponse<{ recipes: Recipe[] }>>(
+    '/pantry/recipes',
+    data,
+    { timeout: 100_000 },
+  )
+  return response.data.data.recipes
+}
+
+export async function cookRecipe(data: CookRequest): Promise<CookResult> {
+  const response = await http.post<ApiResponse<CookResult>>('/pantry/cook', data)
+  return response.data.data
+}
+
+export async function addRecipeMissingToShopping(data: {
+  recipe_name: string
+  missing: RecipeIngredient[]
+}): Promise<RecipeShoppingResult> {
+  const response = await http.post<ApiResponse<RecipeShoppingResult>>(
+    '/pantry/recipes/shopping-items',
+    data,
+  )
   return response.data.data
 }
 

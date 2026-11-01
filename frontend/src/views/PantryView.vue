@@ -15,6 +15,7 @@ import {
   updateShoppingItem,
 } from '../api/pantry'
 import { ApiError } from '../api/http'
+import RecipePanel from '../components/RecipePanel.vue'
 import type {
   ExpiringResult,
   Ingredient,
@@ -24,6 +25,7 @@ import type {
   ShoppingItemPayload,
   Storage,
 } from '../types/pantry'
+import { formatQuantity } from '../utils/quantity'
 
 const units: IngredientUnit[] = ['个', '克', '千克', '毫升', '升', '包', '瓶']
 const storageOptions: { value: Storage; label: string }[] = [
@@ -89,13 +91,6 @@ function emptyShopping(): ShoppingItemPayload {
 
 function messageOf(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback
-}
-
-function formatQuantity(value: string): string {
-  const [integer, fraction] = value.split('.')
-  if (!fraction) return value
-  const trimmed = fraction.replace(/0+$/, '')
-  return trimmed ? `${integer}.${trimmed}` : integer
 }
 
 async function loadInventory(): Promise<void> {
@@ -335,6 +330,14 @@ async function removeShopping(item: ShoppingItem): Promise<void> {
   }
 }
 
+function handleRecipeCooked(): void {
+  void Promise.all([loadInventory(), loadExpiring()])
+}
+
+function handleShoppingAdded(): void {
+  void loadShopping()
+}
+
 onMounted(() => {
   void loadInventory()
   void loadExpiring()
@@ -468,6 +471,10 @@ onMounted(() => {
             @current-change="loadShopping"
           />
         </section>
+      </el-tab-pane>
+
+      <el-tab-pane label="AI 菜谱" name="recipes">
+        <RecipePanel @cooked="handleRecipeCooked" @shopping-added="handleShoppingAdded" />
       </el-tab-pane>
     </el-tabs>
 

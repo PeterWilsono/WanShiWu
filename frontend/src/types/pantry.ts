@@ -94,3 +94,36 @@ export interface ShoppingListQuery {
   done?: boolean
   source?: ShoppingSource
 }
+
+export interface RecipeIngredient {
+  name: string
+  quantity: string
+  unit: IngredientUnit
+}
+
+export interface Recipe {
+  name: string
+  minutes: number
+  uses: RecipeIngredient[]
+  missing: RecipeIngredient[]
+  steps: string[]
+}
+
+export interface RecipeRecommendRequest {
+  preferences?: string
+  servings: number
+}
+
+export interface CookRequest {
+  recipe_name: string
+  uses: RecipeIngredient[]
+}
+
+export interface CookResult {
+  recipe_name: string
+  consumed: ConsumeResult[]
+}
+
+export interface RecipeShoppingResult {
+  items: ShoppingItem[]
+}
