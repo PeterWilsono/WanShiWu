@@ -179,3 +179,13 @@ def test_access_denied_explains_manual_content_fallback(monkeypatch) -> None:
         fetch_article("https://example.com/private")
 
     assert "手动粘贴正文" in str(caught.value)
+
+
+def test_empty_html_returns_actionable_error_not_parser_crash(monkeypatch) -> None:
+    FakeClient.responses = [FakeResponse(200, {"Content-Type": "text/html"}, b"")]
+    monkeypatch.setattr(fetcher_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(socket, "getaddrinfo", public_dns)
+    monkeypatch.setattr(fetcher_module.trafilatura, "extract", lambda *args, **kwargs: None)
+
+    with pytest.raises(FetchError, match="手动粘贴正文"):
+        fetch_article("https://example.com/empty")

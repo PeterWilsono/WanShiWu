@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 import trafilatura
+from lxml import etree
 from lxml import html as lxml_html
 
 from app.modules.inbox.schemas import normalize_url
@@ -87,7 +88,7 @@ def _fallback_text(document: str) -> str | None:
     """正文识别器失败时，从 article/main/body 提取可读文本并剔除明显噪声。"""
     try:
         root = lxml_html.fromstring(document)
-    except (ValueError, TypeError):
+    except (etree.LxmlError, ValueError, TypeError):
         return None
     noisy = "//script|//style|//noscript|//svg|//nav|//footer|//form|//aside"
     for element in root.xpath(noisy):
