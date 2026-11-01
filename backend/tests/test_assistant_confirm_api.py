@@ -8,6 +8,7 @@ from app.assistant.models import AssistantRecord, AssistantStatus
 from app.modules.inbox.models import Bookmark
 from app.modules.life.models import Event, Reminder, Todo, Transaction
 from app.modules.pantry.models import Ingredient
+from app.modules.trip.models import Trip
 
 PASSWORD = "correct-horse-123"
 
@@ -280,7 +281,39 @@ def test_confirm_save_bookmark_creates_pending_record(
     assert bookmark.note == "稍后阅读"
 
 
-def test_confirm_rejects_invalid_or_unsupported_actions_and_marks_failed(
+def test_confirm_create_trip_allows_user_edits_and_zero_budget(
+    client: TestClient, db_session: Session
+) -> None:
+    headers, user = auth_headers(client)
+    actions = [{
+        "tool": "create_trip",
+        "args": {"destination": "杭州", "days": 2, "budget": 1000},
+    }]
+    record = pending_record(db_session, user["id"], actions)
+    edited = [{
+        "tool": "create_trip",
+        "args": {
+            "destination": "苏州",
+            "days": 3,
+            "budget": 0,
+            "preferences": "园林与慢行",
+        },
+    }]
+    response = confirm(client, headers, record.id, edited)
+    assert response.status_code == 200, response.text
+    trip = db_session.scalar(select(Trip).where(Trip.user_id == user["id"]))
+    assert trip is not None
+    assert trip.title == "苏州3日旅行"
+    assert trip.destination == "苏州" and trip.days == 3
+    assert trip.budget_cents == 0
+    assert trip.preferences == "园林与慢行"
+    assert trip.generated_by == "ai" and trip.status == "draft"
+    assert response.json()["data"]["results"] == [
+        {"tool": "create_trip", "ref": f"trip:{trip.id}", "id": trip.id}
+    ]
+
+
+def test_confirm_rejects_invalid_action_and_marks_failed(
     client: TestClient, db_session: Session
 ) -> None:
     headers, user = auth_headers(client)
@@ -295,17 +328,6 @@ def test_confirm_rejects_invalid_or_unsupported_actions_and_marks_failed(
         invalid.id,
         [{"tool": "add_expense", "args": {"amount": -1, "category": "餐饮"}}],
     )
-    unsupported = pending_record(
-        db_session,
-        user["id"],
-        [{"tool": "create_trip", "args": {"destination": "杭州", "days": 2}}],
-    )
-    unsupported_response = confirm(
-        client,
-        headers,
-        unsupported.id,
-        [{"tool": "create_trip", "args": {"destination": "杭州", "days": 2}}],
-    )
 
     assert invalid_response.status_code == 422
     assert invalid_response.json()["code"] == 40001
@@ -314,13 +336,7 @@ def test_confirm_rejects_invalid_or_unsupported_actions_and_marks_failed(
         json={"record_id": invalid.id, "actions": []},
     )
 
-    assert invalid_response.status_code == 422
-    assert invalid_response.json()["code"] == 40001
-    assert unsupported_response.status_code == 422
-    assert "尚未开放" in unsupported_response.json()["message"]
     assert unauthenticated.status_code == 401
     db_session.refresh(invalid)
-    db_session.refresh(unsupported)
     assert invalid.status == AssistantStatus.FAILED
-    assert unsupported.status == AssistantStatus.FAILED
     assert db_session.scalar(select(func.count()).select_from(Transaction)) == 0

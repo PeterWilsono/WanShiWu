@@ -21,7 +21,7 @@ const drafts = ref<ActionDraft[]>([])
 const results = ref<ActionResult[]>([])
 
 const supportedTools: AssistantTool[] = [
-  'create_todo', 'create_event', 'add_expense', 'add_income', 'add_ingredient', 'save_bookmark',
+  'create_todo', 'create_event', 'add_expense', 'add_income', 'add_ingredient', 'save_bookmark', 'create_trip',
 ]
 
 interface ActionDraft {
@@ -45,6 +45,10 @@ interface ActionDraft {
   expireOn: string
   storage: Storage
   url: string
+  destination: string
+  days: number
+  budget: string
+  preferences: string
 }
 
 function optionalDate(value: unknown): Date | null {
@@ -74,6 +78,10 @@ function toDraft(action: AssistantAction): ActionDraft {
     expireOn: String(args.expire_on ?? ''),
     storage: String(args.storage ?? 'room') as Storage,
     url: String(args.url ?? ''),
+    destination: String(args.destination ?? ''),
+    days: typeof args.days === 'number' ? args.days : 1,
+    budget: args.budget === undefined || args.budget === null ? '' : String(args.budget),
+    preferences: String(args.preferences ?? ''),
   }
 }
 
@@ -148,6 +156,21 @@ function toAction(draft: ActionDraft): AssistantAction {
     })
   } else if (draft.tool === 'save_bookmark') {
     Object.assign(args, { url: draft.url.trim(), note: draft.note.trim() || null })
+  } else if (draft.tool === 'create_trip') {
+    const budget = draft.budget.trim()
+    if (budget && !/^(0|[1-9]\d*)(?:\.\d{1,2})?$/.test(budget)) {
+      throw new Error('旅行预算需为非负数字，最多两位小数')
+    }
+    const cents = budget ? Math.round(Number(budget) * 100) : null
+    if (cents !== null && (!Number.isSafeInteger(cents) || cents > 9_999_999_999)) {
+      throw new Error('旅行预算超出可支持的范围')
+    }
+    Object.assign(args, {
+      destination: draft.destination.trim(),
+      days: draft.days,
+      budget: cents === null ? null : cents / 100,
+      preferences: draft.preferences.trim() || null,
+    })
   } else if (draft.tool === 'add_expense' || draft.tool === 'add_income') {
     const cents = yuanToCents(draft.amount)
     if (cents === null) throw new Error('金额必须是大于 0 且最多两位小数的数字')
@@ -178,6 +201,9 @@ function validateDrafts(actions: AssistantAction[]): void {
     }
     if (action.tool === 'save_bookmark' && !/^https?:\/\//.test(String(action.args.url))) {
       throw new Error('收藏链接必须以 http:// 或 https:// 开头')
+    }
+    if (action.tool === 'create_trip' && !action.args.destination) {
+      throw new Error('旅行目的地不能为空')
     }
   }
 }
@@ -223,6 +249,7 @@ function resultRoute(result: ActionResult): string {
   if (result.ref.startsWith('event:')) return '/events'
   if (result.ref.startsWith('ingredient:')) return '/pantry'
   if (result.ref.startsWith('bookmark:')) return '/inbox'
+  if (result.ref.startsWith('trip:')) return `/trip/${result.id}`
   return '/transactions'
 }
 
@@ -327,6 +354,15 @@ function toolName(tool: AssistantTool): string {
           <template v-else-if="draft.tool === 'save_bookmark'">
             <el-form-item label="链接" required><el-input v-model="draft.url" placeholder="https://example.com/article" /></el-form-item>
             <el-form-item label="备注"><el-input v-model="draft.note" type="textarea" :rows="2" maxlength="500" /></el-form-item>
+          </template>
+          <template v-if="draft.tool === 'create_trip'">
+            <div class="draft-form__grid">
+              <el-form-item label="目的地" required><el-input v-model="draft.destination" maxlength="100" /></el-form-item>
+              <el-form-item label="天数" required><el-input-number v-model="draft.days" :min="1" :max="30" class="full-width" /></el-form-item>
+            </div>
+            <el-form-item label="总预算（元，可留空或为 0）"><el-input v-model="draft.budget" placeholder="例如 3000.00" /></el-form-item>
+            <el-form-item label="旅行偏好"><el-input v-model="draft.preferences" type="textarea" :rows="2" maxlength="1000" /></el-form-item>
+            <el-alert title="这里只创建空白行程草稿，详细每日安排可在旅行页面使用 AI 生成。" type="info" :closable="false" />
           </template>
           <template v-if="draft.tool === 'add_ingredient'">
             <el-form-item label="食材名称" required><el-input v-model="draft.name" maxlength="50" /></el-form-item>

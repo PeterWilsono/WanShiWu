@@ -13,6 +13,7 @@ from app.llm.schemas import (
     AddIngredientArgs,
     CreateEventArgs,
     CreateTodoArgs,
+    CreateTripArgs,
     MoneyArgs,
     SaveBookmarkArgs,
     ToolArgs,
@@ -24,6 +25,9 @@ from app.modules.life.schemas import EventCreate, TodoCreate, TransactionCreate
 from app.modules.life.service import create_event, create_todo, create_transaction
 from app.modules.pantry.schemas import IngredientCreate
 from app.modules.pantry.service import create_ingredient
+from app.modules.trip.models import GeneratedBy
+from app.modules.trip.schemas import TripCreate
+from app.modules.trip.service import create_trip
 
 ActionResult = tuple[str, int]
 ActionHandler = Callable[[Session, int, ToolArgs], ActionResult]
@@ -91,6 +95,27 @@ def _save_bookmark(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
     return "bookmark", bookmark.id
 
 
+def _create_trip(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
+    assert isinstance(args, CreateTripArgs)
+    budget_cents = (
+        int((args.budget * 100).to_integral_exact()) if args.budget is not None else None
+    )
+    trip = create_trip(
+        db,
+        user_id,
+        TripCreate(
+            title=f"{args.destination}{args.days}日旅行",
+            destination=args.destination,
+            days=args.days,
+            budget_cents=budget_cents,
+            preferences=args.preferences,
+            generated_by=GeneratedBy.AI,
+        ),
+        commit=False,
+    )
+    return "trip", trip.id
+
+
 def _add_expense(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
     assert isinstance(args, AddExpenseArgs)
     return _create_money(db, user_id, args, "expense")
@@ -108,4 +133,5 @@ DISPATCH: dict[str, ActionHandler] = {
     "add_income": _add_income,
     "add_ingredient": _add_ingredient,
     "save_bookmark": _save_bookmark,
+    "create_trip": _create_trip,
 }
