@@ -1,0 +1,19 @@
+{
+  "name": "wanshiwu-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "万事屋 Windows 桌面软件",
+  "main": "main.js",
+  "author": "WanShiWu",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke-test",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  }
+}

@@ -70,5 +70,6 @@
 | [阶段 10.2](10-2-inbox-fetch-rescue.md) | 网页编码/XHTML/正文兜底、失败原因与仅保存正文 | 已完成 |
 | [阶段 10.3](10-3-trip-ai-entry.md) | 旅行列表与空状态的 AI 直接入口、弹窗初始模式 | 已完成 |
 | [阶段 10.4](10-4-empty-inventory-recipes.md) | 空库存自由菜谱、完整采购用料、购物清单联动与明确提示 | 已完成 |
+| [阶段 11.1](11-1-windows-desktop-installer.md) | Electron 静默桌面窗口、内嵌 Python/SQLite、NSIS 安装与实际安装验收 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

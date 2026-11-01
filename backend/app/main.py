@@ -21,6 +21,7 @@ from app.modules.pantry.router import router as pantry_router
 from app.modules.settings.router import router as settings_router
 from app.modules.trip.router import router as trip_router
 from app.scheduler.reminders import create_scheduler
+from app.web import mount_frontend
 
 setup_logging(settings.log_level)
 
@@ -61,3 +62,8 @@ app.include_router(settings_router, prefix="/api/v1")
 def health() -> dict[str, object]:
     """健康检查（无需登录，见 PROJECT_SPEC.md 8.4）。"""
     return ok({"status": "ok", "app_env": settings.app_env})
+
+
+# 必须在所有 API 之后挂载，避免 SPA 回退页面覆盖接口路由。
+if settings.frontend_dist:
+    mount_frontend(app, settings.frontend_dist)

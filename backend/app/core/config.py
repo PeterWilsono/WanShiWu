@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     default_timezone: str = "Asia/Shanghai"
     allow_register: bool = True
     scheduler_enabled: bool = True
+    frontend_dist: str | None = None  # 桌面版/单进程部署时指向前端构建目录
 
     # ---- 鉴权 ----
     jwt_secret: str = "change-me-to-a-long-random-string"

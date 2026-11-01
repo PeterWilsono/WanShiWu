@@ -1,0 +1,33 @@
+appId: cn.wanshiwu.desktop
+productName: 万事屋
+executableName: WanShiWu
+copyright: Copyright © 2026 WanShiWu
+directories:
+  output: release
+  buildResources: build
+files:
+  - main.js
+  - loading.html
+  - package.json
+asar: true
+extraResources:
+  - from: dist/backend/wanshiwu-backend
+    to: backend
+    filter:
+      - "**/*"
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: 万事屋-Windows-${version}-安装包.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 万事屋
+  uninstallDisplayName: 万事屋
+  license: LICENSE.txt

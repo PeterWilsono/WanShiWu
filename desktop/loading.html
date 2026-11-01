@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>万事屋正在启动</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f1e9; color: #183b32; font-family: "Microsoft YaHei", sans-serif; }
+      main { text-align: center; }
+      .mark { width: 76px; height: 76px; margin: 0 auto 24px; display: grid; place-items: center; border-radius: 20px; background: #183b32; color: #f4f1e9; font: 38px STKaiti, KaiTi, serif; }
+      h1 { margin: 0 0 12px; font: 600 30px STKaiti, KaiTi, serif; letter-spacing: .12em; }
+      p { margin: 0; color: #6f7872; font-size: 13px; }
+      .line { width: 150px; height: 2px; margin: 28px auto 0; overflow: hidden; background: #dedbd2; }
+      .line::after { content: ""; display: block; width: 60%; height: 100%; background: #c45b3f; animation: loading 1.2s ease-in-out infinite alternate; }
+      @keyframes loading { from { transform: translateX(-70%); } to { transform: translateX(130%); } }
+    </style>
+  </head>
+  <body><main><div class="mark">万</div><h1>万事屋</h1><p>正在整理您的生活手帖，请稍候…</p><div class="line"></div></main></body>
+</html>

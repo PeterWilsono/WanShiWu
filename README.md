@@ -12,6 +12,20 @@
 | 前端 | Vue 3 · TypeScript · Vite · Element Plus · Pinia · Vue Router |
 | AI | OpenAI 兼容接口（小米 MiMo / DeepSeek），function calling 意图识别 |
 | 工程 | pytest · ruff · GitHub Actions · Docker Compose |
+| 桌面软件 | Electron · PyInstaller · NSIS Windows 安装包 |
+
+## Windows 桌面软件（推荐给普通使用者）
+
+构建产物：`desktop/release/万事屋-Windows-1.0.0-安装包.exe`，约 160 MB。
+
+1. 只需把这一个 exe 安装包发给使用 Windows 10/11 64 位系统的朋友。
+2. 双击安装包，按普通软件完成安装，然后双击桌面“万事屋”图标。
+3. 首次打开点击“创建账号”。不需要 Python、Node.js、浏览器地址或命令行窗口。
+4. 普通功能在本机运行；AI 和网页收藏需要网络，AI 还需在“我的 → 设置 → AI 模型”配置自己的 Key。
+
+账号与业务数据默认保存在 `%LOCALAPPDATA%\WanShiWu\data`，不同电脑的数据不会自动同步。备份时先完全退出软件，再复制整个 `data` 目录。当前安装包未购买商业代码签名证书，Windows 可能显示“未知发布者”；正式公开分发前建议增加可信代码签名。
+
+开发者重新构建：先安装后端开发依赖、`desktop/requirements-build.txt` 和 `desktop` 的 npm 依赖，再在项目根目录运行 `desktop\build-windows.bat`。安装包、缓存、测试数据库和构建目录均不提交 Git。
 
 ## 快速开始（开发模式）
 
@@ -79,6 +93,7 @@ CI 位于 `.github/workflows/ci.yml`，包含后端 Ruff、pytest 和 80% 覆盖
 - [x] 阶段 7 · 旅行规划 P0/P1：每日安排、预算、AI 草稿、重排序与 Markdown 导出
 - [x] 阶段 8 · 一键启动、Docker/Compose、CI、备份脚本与项目文档
 - [x] 阶段 9 · 我的与设置：MiMo / DeepSeek 配置、加密密钥、连接测试与通用偏好
+- [x] 阶段 11 · Windows 桌面软件：内嵌后端、静默启动、本地数据与 NSIS 安装包
 
 当前四个模块的 P0/P1 主要流程均已落地，但不等于说明书全部版本已经完成。RAG 知识库、PDF/ICS 导出、地图与路线等 P2 增强尚未实现；真实模型质量、真实网页抓取、浏览器细节交互和真机 PWA 仍需单独验收。各小阶段的真实验证记录见阶段文档。
 

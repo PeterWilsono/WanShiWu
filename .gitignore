@@ -45,3 +45,6 @@ Thumbs.db
 .workbuddy/
 .playwright-cli/
 .cache/
+release/
+desktop/.smoke-data/
+desktop/test-install/
