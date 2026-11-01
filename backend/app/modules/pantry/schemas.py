@@ -84,7 +84,9 @@ class ConsumeRequest(BaseModel):
 class RecipeIngredient(BaseModel):
     """菜谱用量；单位与库存完全一致时才可扣减，本期不自动换算。"""
 
-    name: str = Field(min_length=1, max_length=50)
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(strict=True, min_length=1, max_length=50)
     quantity: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     unit: IngredientUnit
 
@@ -206,3 +208,55 @@ class ShoppingItemListResponse(BaseModel):
 
 class RecipeShoppingResponse(BaseModel):
     items: list[ShoppingItemResponse]
+
+
+class RecipeRecommendRequest(BaseModel):
+    preferences: str | None = Field(default=None, max_length=200)
+    servings: int = Field(default=2, ge=1, le=12)
+
+    @field_validator("preferences", mode="before")
+    @classmethod
+    def strip_preferences(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        return stripped or None
+
+
+class Recipe(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(strict=True, min_length=1, max_length=100)
+    minutes: int = Field(strict=True, ge=1, le=480)
+    uses: list[RecipeIngredient] = Field(max_length=50)
+    missing: list[RecipeIngredient] = Field(max_length=50)
+    steps: list[str] = Field(min_length=2, max_length=12)
+
+    @field_validator("name")
+    @classmethod
+    def validate_recipe_name(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("菜谱名不能为空")
+        return stripped
+
+    @field_validator("steps")
+    @classmethod
+    def validate_steps(cls, value: list[str]) -> list[str]:
+        if any(not isinstance(step, str) or not 1 <= len(step.strip()) <= 200 for step in value):
+            raise ValueError("每个步骤必须是 1 至 200 字的非空字符串")
+        return [step.strip() for step in value]
+
+
+class RecipeRecommendResponse(BaseModel):
+    recipes: list[Recipe] = Field(min_length=3, max_length=3)
+
+
+class LLMRecipe(Recipe):
+    uses: list[RecipeIngredient] = Field(min_length=1, max_length=50)
+
+
+class LLMRecipeOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    recipes: list[LLMRecipe] = Field(min_length=3, max_length=3)

@@ -5,10 +5,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.assistant.dependencies import LLMClientDependency
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.pantry.models import Ingredient, ShoppingItem
+from app.modules.pantry.recipe_service import recommend_recipes
 from app.modules.pantry.schemas import (
     ConsumeRequest,
     CookRequest,
@@ -18,6 +20,7 @@ from app.modules.pantry.schemas import (
     IngredientListResponse,
     IngredientResponse,
     IngredientUpdate,
+    RecipeRecommendRequest,
     RecipeShoppingRequest,
     RecipeShoppingResponse,
     ShoppingItemCreate,
@@ -95,6 +98,17 @@ def consume_ingredient_endpoint(
 ) -> dict:
     result = consume_ingredient(db, current_user.id, data)
     return ok(result.model_dump(mode="json"), "扣减成功")
+
+
+@router.post("/pantry/recipes")
+def recommend_recipes_endpoint(
+    data: RecipeRecommendRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+    llm: LLMClientDependency,
+) -> dict:
+    result = recommend_recipes(db, current_user, llm, data)
+    return ok(result.model_dump(mode="json"), "菜谱推荐成功")
 
 
 @router.post("/pantry/cook")
