@@ -25,6 +25,8 @@ from app.db.session import get_db  # noqa: E402
 from app.llm import models as llm_models  # noqa: E402,F401
 from app.main import app  # noqa: E402
 from app.modules.auth import models as auth_models  # noqa: E402,F401
+from app.modules.inbox import models as inbox_models  # noqa: E402,F401
+from app.modules.inbox.fts import ensure_bookmarks_fts  # noqa: E402
 from app.modules.life import models as life_models  # noqa: E402,F401
 from app.modules.pantry import models as pantry_models  # noqa: E402,F401
 
@@ -40,6 +42,7 @@ def db_session() -> Generator[Session, None, None]:
     )
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
+    ensure_bookmarks_fts(session)
     try:
         yield session
     finally:

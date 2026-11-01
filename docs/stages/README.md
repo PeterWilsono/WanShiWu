@@ -50,6 +50,7 @@
 | [阶段 5.6](05-6-ai-recipe-recommendation.md) | AI 菜谱 JSON 校验、失败重试与真实库存重核算 | 已完成 |
 | [阶段 5.7](05-7-assistant-ingredient-confirmation.md) | 首页食材候选编辑、确认入库与多动作回滚 | 已完成 |
 | [阶段 5.8](05-8-frontend-recipe-panel.md) | AI 菜谱卡片、做菜扣库存与缺料加购完整页面 | 已完成 |
-| [阶段 6](06-visual-system-refinement.md) | 东方生活手帖视觉系统、响应式导航与月历时区修正 | 已完成 |
+| [视觉专项](06-visual-system-refinement.md) | 东方生活手帖视觉系统、响应式导航与月历时区修正 | 已完成 |
+| [阶段 6.1](06-1-inbox-models-fts.md) | 收藏、标签、每周回顾模型与 FTS5 全文索引迁移 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

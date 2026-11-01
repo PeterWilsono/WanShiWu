@@ -13,6 +13,7 @@ from app.db.base import Base
 from app.assistant import models as assistant_models  # noqa: F401
 from app.llm import models as llm_models  # noqa: F401
 from app.modules.auth import models as auth_models  # noqa: F401
+from app.modules.inbox import models as inbox_models  # noqa: F401
 from app.modules.life import models as life_models  # noqa: F401
 from app.modules.pantry import models as pantry_models  # noqa: F401
 
