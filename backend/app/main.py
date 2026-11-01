@@ -15,6 +15,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import RequestLogMiddleware, setup_logging
 from app.core.response import ok
 from app.modules.auth.router import router as auth_router
+from app.modules.inbox.router import router as inbox_router
 from app.modules.life.router import router as life_router
 from app.modules.pantry.router import router as pantry_router
 from app.scheduler.reminders import create_scheduler
@@ -46,6 +47,7 @@ app = FastAPI(
 register_exception_handlers(app)
 app.add_middleware(RequestLogMiddleware)
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(inbox_router, prefix="/api/v1")
 app.include_router(life_router, prefix="/api/v1")
 app.include_router(assistant_router, prefix="/api/v1")
 app.include_router(pantry_router, prefix="/api/v1")
