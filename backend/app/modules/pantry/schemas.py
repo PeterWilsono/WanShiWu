@@ -81,6 +81,19 @@ class ConsumeRequest(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class RecipeIngredient(BaseModel):
+    """菜谱用量；单位与库存完全一致时才可扣减，本期不自动换算。"""
+
+    name: str = Field(min_length=1, max_length=50)
+    quantity: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    unit: IngredientUnit
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
 class ConsumeBatchResult(BaseModel):
     ingredient_id: int
     consumed_quantity: Decimal
@@ -94,6 +107,31 @@ class ConsumeResponse(BaseModel):
     consumed_quantity: Decimal
     remaining_stock: Decimal
     batches: list[ConsumeBatchResult]
+
+
+class CookRequest(BaseModel):
+    recipe_name: str = Field(min_length=1, max_length=100)
+    uses: list[RecipeIngredient] = Field(min_length=1, max_length=50)
+
+    @field_validator("recipe_name", mode="before")
+    @classmethod
+    def strip_recipe_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class CookResponse(BaseModel):
+    recipe_name: str
+    consumed: list[ConsumeResponse]
+
+
+class RecipeShoppingRequest(BaseModel):
+    recipe_name: str = Field(min_length=1, max_length=100)
+    missing: list[RecipeIngredient] = Field(min_length=1, max_length=50)
+
+    @field_validator("recipe_name", mode="before")
+    @classmethod
+    def strip_recipe_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
 
 class ExpiringQuery(BaseModel):
@@ -164,3 +202,7 @@ class ShoppingItemListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class RecipeShoppingResponse(BaseModel):
+    items: list[ShoppingItemResponse]

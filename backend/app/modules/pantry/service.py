@@ -9,17 +9,20 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.pantry.models import Ingredient, IngredientStatus, ShoppingItem
+from app.modules.pantry.models import Ingredient, IngredientStatus, ShoppingItem, ShoppingSource
 from app.modules.pantry.schemas import (
     ConsumeBatchResult,
     ConsumeRequest,
     ConsumeResponse,
+    CookRequest,
+    CookResponse,
     ExpiringIngredientResponse,
     ExpiringResponse,
     IngredientCreate,
     IngredientListQuery,
     IngredientResponse,
     IngredientUpdate,
+    RecipeShoppingRequest,
     ShoppingItemCreate,
     ShoppingItemListQuery,
     ShoppingItemUpdate,
@@ -201,6 +204,25 @@ def consume_ingredient(
     )
 
 
+def cook_recipe(db: Session, user_id: int, data: CookRequest) -> CookResponse:
+    """整道菜只提交一次；任何食材不足都恢复此前的所有扣减。"""
+    try:
+        consumed = [
+            consume_ingredient(
+                db,
+                user_id,
+                ConsumeRequest(name=item.name, quantity=item.quantity, unit=item.unit),
+                commit=False,
+            )
+            for item in data.uses
+        ]
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return CookResponse(recipe_name=data.recipe_name, consumed=consumed)
+
+
 def resolve_expiring_days(settings: dict, requested_days: int | None) -> int:
     if requested_days is not None:
         return requested_days
@@ -256,6 +278,33 @@ def create_shopping_item(
         db.flush()
     db.refresh(item)
     return item
+
+
+def add_recipe_missing_to_shopping(
+    db: Session, user_id: int, data: RecipeShoppingRequest
+) -> list[ShoppingItem]:
+    """缺料整批写入，避免多次独立请求造成只添加了一部分。"""
+    try:
+        items = [
+            create_shopping_item(
+                db,
+                user_id,
+                ShoppingItemCreate(
+                    name=item.name,
+                    quantity=item.quantity,
+                    unit=item.unit,
+                    source=ShoppingSource.RECIPE,
+                    recipe_name=data.recipe_name,
+                ),
+                commit=False,
+            )
+            for item in data.missing
+        ]
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return items
 
 
 def list_shopping_items(

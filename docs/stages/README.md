@@ -45,6 +45,7 @@
 | [阶段 5.2](05-2-ingredient-crud-fefo-expiring.md) | 食材 CRUD、FEFO 扣减、库存缺口与用户时区临期 | 已完成 |
 | [阶段 5.3](05-3-shopping-items-api.md) | 购物清单 CRUD、完成筛选与菜谱联动 service | 已完成 |
 | [阶段 5.4](05-4-frontend-pantry-p0.md) | 库存分组、FEFO 消耗、临期与购物清单页面 | 已完成 |
+| [阶段 5.5](05-5-cook-and-recipe-shopping.md) | 做菜多食材原子扣减与缺料批量加入购物清单 | 已完成 |
 | [阶段 6](06-visual-system-refinement.md) | 东方生活手帖视觉系统、响应式导航与月历时区修正 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

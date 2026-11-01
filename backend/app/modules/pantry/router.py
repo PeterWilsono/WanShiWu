@@ -11,12 +11,15 @@ from app.modules.auth.dependencies import CurrentUser
 from app.modules.pantry.models import Ingredient, ShoppingItem
 from app.modules.pantry.schemas import (
     ConsumeRequest,
+    CookRequest,
     ExpiringQuery,
     IngredientCreate,
     IngredientListQuery,
     IngredientListResponse,
     IngredientResponse,
     IngredientUpdate,
+    RecipeShoppingRequest,
+    RecipeShoppingResponse,
     ShoppingItemCreate,
     ShoppingItemListQuery,
     ShoppingItemListResponse,
@@ -24,7 +27,9 @@ from app.modules.pantry.schemas import (
     ShoppingItemUpdate,
 )
 from app.modules.pantry.service import (
+    add_recipe_missing_to_shopping,
     consume_ingredient,
+    cook_recipe,
     create_ingredient,
     create_shopping_item,
     delete_ingredient,
@@ -92,6 +97,12 @@ def consume_ingredient_endpoint(
     return ok(result.model_dump(mode="json"), "扣减成功")
 
 
+@router.post("/pantry/cook")
+def cook_recipe_endpoint(data: CookRequest, db: DbSession, current_user: CurrentUser) -> dict:
+    result = cook_recipe(db, current_user.id, data)
+    return ok(result.model_dump(mode="json"), "已按菜谱扣减库存")
+
+
 @router.get("/ingredients/{ingredient_id}")
 def get_ingredient_endpoint(ingredient_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     return ok(serialize_ingredient(get_ingredient(db, current_user.id, ingredient_id)))
@@ -114,6 +125,17 @@ def delete_ingredient_endpoint(
 ) -> dict:
     delete_ingredient(db, current_user.id, ingredient_id)
     return ok(message="删除成功")
+
+
+@router.post("/pantry/recipes/shopping-items")
+def add_recipe_missing_endpoint(
+    data: RecipeShoppingRequest, db: DbSession, current_user: CurrentUser
+) -> dict:
+    items = add_recipe_missing_to_shopping(db, current_user.id, data)
+    result = RecipeShoppingResponse(
+        items=[ShoppingItemResponse.model_validate(item) for item in items]
+    )
+    return ok(result.model_dump(mode="json"), "缺料已加入购物清单")
 
 
 @router.post("/shopping-items")
