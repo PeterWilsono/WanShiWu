@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
 from app.modules.inbox.ai_service import mark_for_retry, regenerate_from_manual_content
 from app.modules.inbox.dependencies import BookmarkProcessor
+from app.modules.inbox.digest_service import list_weekly_digests
 from app.modules.inbox.models import BookmarkStatus
 from app.modules.inbox.schemas import BookmarkCreate, BookmarkUpdate, ManualContentRequest
 from app.modules.inbox.service import (
@@ -121,6 +122,17 @@ def update_bookmark_endpoint(
 def delete_bookmark_endpoint(db: Db, current_user: CurrentUser, bookmark_id: int) -> dict:
     delete_bookmark(db, current_user.id, bookmark_id)
     return ok(None, "收藏已删除")
+
+
+@router.get("/inbox/weekly-digests")
+def weekly_digests_endpoint(
+    db: Db,
+    current_user: CurrentUser,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+) -> dict:
+    result = list_weekly_digests(db, current_user.id, page=page, page_size=page_size)
+    return ok(result.model_dump(mode="json"))
 
 
 @router.get("/tags")

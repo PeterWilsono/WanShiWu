@@ -142,8 +142,17 @@ class SummaryOutput(BaseModel):
 
 
 class WeeklyDigestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     week_start: date
     content_md: str
     bookmark_count: int
     created_at: datetime
+
+
+class WeeklyDigestListResponse(BaseModel):
+    items: list[WeeklyDigestResponse]
+    total: int
+    page: int
+    page_size: int

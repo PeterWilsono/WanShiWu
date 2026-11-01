@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.db.session import SessionLocal
 from app.modules.life.service import fire_due_reminders
+from app.scheduler.weekly import run_weekly_digest_scan
 
 logger = logging.getLogger("wanshiwu.scheduler")
 
@@ -31,6 +32,15 @@ def create_scheduler() -> BackgroundScheduler:
         trigger="interval",
         minutes=1,
         id="fire_due_reminders",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_weekly_digest_scan,
+        trigger="cron",
+        minute=0,
+        id="generate_weekly_digests",
         replace_existing=True,
         coalesce=True,
         max_instances=1,
