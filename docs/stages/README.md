@@ -53,5 +53,6 @@
 | [视觉专项](06-visual-system-refinement.md) | 东方生活手帖视觉系统、响应式导航与月历时区修正 | 已完成 |
 | [阶段 6.1](06-1-inbox-models-fts.md) | 收藏、标签、每周回顾模型与 FTS5 全文索引迁移 | 已完成 |
 | [阶段 6.2](06-2-bookmark-crud-search.md) | 收藏 CRUD、手动标签、用户隔离与 FTS5 搜索 | 已完成 |
+| [阶段 6.3](06-3-inbox-fetch-summary.md) | SSRF 防护、异步抓取、AI 摘要标签与手动正文兜底 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

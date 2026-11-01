@@ -26,6 +26,7 @@ from app.llm import models as llm_models  # noqa: E402,F401
 from app.main import app  # noqa: E402
 from app.modules.auth import models as auth_models  # noqa: E402,F401
 from app.modules.inbox import models as inbox_models  # noqa: E402,F401
+from app.modules.inbox.dependencies import get_bookmark_processor  # noqa: E402
 from app.modules.inbox.fts import ensure_bookmarks_fts  # noqa: E402
 from app.modules.life import models as life_models  # noqa: E402,F401
 from app.modules.pantry import models as pantry_models  # noqa: E402,F401
@@ -58,7 +59,14 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
+    def override_bookmark_processor():
+        def process(_bookmark_id: int, _user_id: int) -> None:
+            return None
+
+        return process
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_bookmark_processor] = override_bookmark_processor
     try:
         with TestClient(app) as test_client:
             yield test_client

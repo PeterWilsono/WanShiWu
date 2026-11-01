@@ -2,14 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.assistant.dependencies import LLMClientDependency
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
+from app.modules.inbox.ai_service import mark_for_retry, regenerate_from_manual_content
+from app.modules.inbox.dependencies import BookmarkProcessor
 from app.modules.inbox.models import BookmarkStatus
-from app.modules.inbox.schemas import BookmarkCreate, BookmarkUpdate
+from app.modules.inbox.schemas import BookmarkCreate, BookmarkUpdate, ManualContentRequest
 from app.modules.inbox.service import (
     bookmark_response,
     create_bookmark,
@@ -46,8 +49,15 @@ def list_bookmarks_endpoint(
 
 
 @router.post("/bookmarks")
-def create_bookmark_endpoint(db: Db, current_user: CurrentUser, data: BookmarkCreate) -> dict:
+def create_bookmark_endpoint(
+    db: Db,
+    current_user: CurrentUser,
+    data: BookmarkCreate,
+    background_tasks: BackgroundTasks,
+    processor: BookmarkProcessor,
+) -> dict:
     bookmark = create_bookmark(db, current_user.id, data)
+    background_tasks.add_task(processor, bookmark.id, current_user.id)
     result = bookmark_response(db, current_user.id, bookmark)
     return ok(result.model_dump(mode="json"), "收藏已保存，等待处理")
 
@@ -62,6 +72,33 @@ def search_bookmarks_endpoint(
 ) -> dict:
     result = search_bookmarks(db, current_user.id, q, page=page, page_size=page_size)
     return ok(result.model_dump(mode="json"))
+
+
+@router.post("/bookmarks/{bookmark_id}/retry")
+def retry_bookmark_endpoint(
+    db: Db,
+    current_user: CurrentUser,
+    bookmark_id: int,
+    background_tasks: BackgroundTasks,
+    processor: BookmarkProcessor,
+) -> dict:
+    bookmark = mark_for_retry(db, current_user.id, bookmark_id)
+    background_tasks.add_task(processor, bookmark.id, current_user.id)
+    result = bookmark_response(db, current_user.id, bookmark)
+    return ok(result.model_dump(mode="json"), "已重新加入处理队列")
+
+
+@router.put("/bookmarks/{bookmark_id}/content")
+def update_content_endpoint(
+    db: Db,
+    current_user: CurrentUser,
+    bookmark_id: int,
+    data: ManualContentRequest,
+    llm: LLMClientDependency,
+) -> dict:
+    bookmark = regenerate_from_manual_content(db, current_user.id, bookmark_id, data, llm)
+    result = bookmark_response(db, current_user.id, bookmark)
+    return ok(result.model_dump(mode="json"), "正文与 AI 摘要已更新")
 
 
 @router.get("/bookmarks/{bookmark_id}")

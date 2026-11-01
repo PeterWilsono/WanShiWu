@@ -41,6 +41,8 @@ def clean_tags(value: list[str]) -> list[str]:
         name = item.strip()
         if not name:
             raise ValueError("标签不能为空白")
+        if len(name) > 30:
+            raise ValueError("每个标签不能超过 30 个字符")
         if name not in seen:
             cleaned.append(name)
             seen.add(name)
@@ -113,6 +115,30 @@ class BookmarkListResponse(BaseModel):
 
 class TagListResponse(BaseModel):
     items: list[TagResponse]
+
+
+class ManualContentRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=100_000)
+
+    @field_validator("content")
+    @classmethod
+    def strip_content(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("正文不能为空白")
+        return cleaned
+
+
+class SummaryOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(min_length=1, max_length=150)
+    tags: list[str] = Field(default_factory=list, max_length=5)
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        return clean_tags(value)
 
 
 class WeeklyDigestResponse(BaseModel):
