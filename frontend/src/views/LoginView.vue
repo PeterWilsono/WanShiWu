@@ -1,24 +1,50 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '../api/http'
 import AppIcon from '../components/AppIcon.vue'
 import { useAuthStore } from '../stores/auth'
-import type { LoginRequest } from '../types/auth'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const formRef = ref<FormInstance>()
-const form = reactive<LoginRequest>({ username: '', password: '' })
+const form = reactive({ username: '', password: '', confirmPassword: '' })
 const errorMessage = ref('')
-const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-}
+const submitting = ref(false)
+const isRegister = computed(() => route.name === 'register')
+const rules = computed<FormRules>(() => ({
+  username: isRegister.value
+    ? [
+        { required: true, message: '请输入用户名', trigger: 'blur' },
+        { min: 3, max: 50, message: '用户名需为 3～50 个字符', trigger: 'blur' },
+      ]
+    : [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: isRegister.value
+    ? [
+        { required: true, message: '请输入密码', trigger: 'blur' },
+        { min: 8, max: 128, message: '密码至少 8 个字符', trigger: 'blur' },
+      ]
+    : [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  confirmPassword: [{
+    validator: (_rule, value: string, callback) => {
+      if (!isRegister.value) return callback()
+      if (!value) return callback(new Error('请再次输入密码'))
+      if (value !== form.password) return callback(new Error('两次输入的密码不一致'))
+      callback()
+    },
+    trigger: ['blur', 'change'],
+  }],
+}))
+
+watch(isRegister, () => {
+  errorMessage.value = ''
+  form.confirmPassword = ''
+  formRef.value?.clearValidate()
+})
 
 function redirectTarget(): string {
   const queryValue = route.query.redirect
@@ -27,16 +53,22 @@ function redirectTarget(): string {
   return '/'
 }
 
-async function handleLogin(): Promise<void> {
+async function handleSubmit(): Promise<void> {
   errorMessage.value = ''
   if (!formRef.value) return
   try { await formRef.value.validate() } catch { return }
+  submitting.value = true
   try {
-    await authStore.login(form)
-    ElMessage.success('欢迎回来')
+    const credentials = { username: form.username, password: form.password }
+    if (isRegister.value) await authStore.register(credentials)
+    await authStore.login(credentials)
+    ElMessage.success(isRegister.value ? '账号已创建，欢迎加入' : '欢迎回来')
     await router.push(redirectTarget())
   } catch (error) {
-    errorMessage.value = error instanceof ApiError ? error.message : '登录失败，请稍后重试'
+    const fallback = isRegister.value ? '注册失败，请稍后重试' : '登录失败，请稍后重试'
+    errorMessage.value = error instanceof ApiError ? error.message : fallback
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -61,21 +93,30 @@ async function handleLogin(): Promise<void> {
 
     <section class="login-form-section">
       <div class="login-form-wrap">
-        <p class="login-form__eyebrow">WELCOME BACK</p>
-        <h2>欢迎回来</h2>
-        <p class="login-form__intro">今天，也从照顾好一件小事开始。</p>
+        <p class="login-form__eyebrow">{{ isRegister ? 'BEGIN YOUR JOURNAL' : 'WELCOME BACK' }}</p>
+        <h2>{{ isRegister ? '创建你的生活手帖' : '欢迎回来' }}</h2>
+        <p class="login-form__intro">{{ isRegister ? '一个账号，安放待办、日程、收支与日常灵感。' : '今天，也从照顾好一件小事开始。' }}</p>
         <el-alert v-if="errorMessage" :title="errorMessage" type="error" :closable="false" show-icon class="login-alert" />
-        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" size="large" @submit.prevent="handleLogin">
+        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" size="large" @submit.prevent="handleSubmit">
           <el-form-item label="用户名" prop="username">
-            <el-input v-model="form.username" autocomplete="username" placeholder="你的用户名" autofocus />
+            <el-input v-model.trim="form.username" autocomplete="username" :placeholder="isRegister ? '3～50 个字符，不含空格' : '你的用户名'" autofocus />
           </el-form-item>
           <el-form-item label="密码" prop="password">
-            <el-input v-model="form.password" type="password" autocomplete="current-password" placeholder="你的密码" show-password />
+            <el-input v-model="form.password" type="password" :autocomplete="isRegister ? 'new-password' : 'current-password'" :placeholder="isRegister ? '至少 8 个字符' : '你的密码'" show-password />
           </el-form-item>
-          <el-button type="primary" native-type="submit" class="login-button" :loading="authStore.loading">
-            回到我的生活 <AppIcon name="arrow" :size="17" />
+          <el-form-item v-if="isRegister" label="确认密码" prop="confirmPassword">
+            <el-input v-model="form.confirmPassword" type="password" autocomplete="new-password" placeholder="再输入一次密码" show-password />
+          </el-form-item>
+          <el-button type="primary" native-type="submit" class="login-button" :loading="submitting">
+            {{ isRegister ? '创建账号并进入' : '回到我的生活' }} <AppIcon name="arrow" :size="17" />
           </el-button>
         </el-form>
+        <p class="auth-switch">
+          {{ isRegister ? '已经有账号了？' : '第一次来到万事屋？' }}
+          <router-link :to="{ name: isRegister ? 'login' : 'register', query: route.query }">
+            {{ isRegister ? '返回登录' : '创建账号' }}
+          </router-link>
+        </p>
         <p class="login-form__privacy"><span />你的个人数据，仅属于你自己</p>
       </div>
       <p class="login-form__foot">LESS NOISE. MORE LIFE.</p>
@@ -112,6 +153,9 @@ async function handleLogin(): Promise<void> {
 .login-form-wrap :deep(.el-form-item) { margin-bottom: 24px; }
 .login-form-wrap :deep(.el-input__wrapper) { min-height: 50px; background: var(--paper); }
 .login-button { display: flex; width: 100%; min-height: 50px; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; border-radius: 12px; }
+.auth-switch { margin-top: 22px; color: var(--ink-muted); font-size: 12px; text-align: center; }
+.auth-switch a { margin-left: 6px; color: var(--vermilion); font-weight: 650; text-decoration: none; }
+.auth-switch a:hover { text-decoration: underline; }
 .login-form__privacy { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px; color: var(--ink-muted); font-size: 11px; }
 .login-form__privacy span { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); }
 .login-form__foot { margin-top: 80px; color: var(--ink-muted); font-size: 8px; letter-spacing: .26em; }
