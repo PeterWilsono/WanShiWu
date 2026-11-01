@@ -215,8 +215,9 @@ def test_llm_client_explains_missing_configuration(db_session: Session) -> None:
     db_session.add(user)
     db_session.commit()
 
+    llm = LLMClient(db_session, user.id)
     with pytest.raises(AppError) as caught:
-        LLMClient(db_session, user.id)
+        llm.chat([{"role": "user", "content": "你好"}], module="settings", purpose="test")
 
     assert caught.value.http_status == 503
     assert "我的 → 设置" in caught.value.message

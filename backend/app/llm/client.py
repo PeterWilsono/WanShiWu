@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.llm.config import resolve_llm_config
+from app.llm.config import LLMRuntimeConfig, resolve_llm_config
 from app.llm.models import LLMCallLog
 from app.modules.auth.models import User
 
@@ -48,16 +48,26 @@ class LLMClient:
     ) -> None:
         self.db = db
         self.user_id = user_id
-        self.config = resolve_llm_config(db, user_id, allow_placeholder=sdk_client is not None)
-        self.sdk = sdk_client or OpenAI(
-            api_key=self.config.api_key,
-            base_url=self.config.base_url,
-            timeout=self.config.timeout_seconds,
-            max_retries=0,
-        )
+        self.config: LLMRuntimeConfig | None = None
+        self.sdk = sdk_client
         self.sleep = sleep
         self.monotonic = monotonic
         self.current_time = current_time
+
+    def _prepare(self) -> OpenAI:
+        """延迟到真实调用时解析配置，避免模型状态遮蔽请求参数校验。"""
+        if self.config is None:
+            self.config = resolve_llm_config(
+                self.db, self.user_id, allow_placeholder=self.sdk is not None
+            )
+        if self.sdk is None:
+            self.sdk = OpenAI(
+                api_key=self.config.api_key,
+                base_url=self.config.base_url,
+                timeout=self.config.timeout_seconds,
+                max_retries=0,
+            )
+        return self.sdk
 
     def chat(
         self,
@@ -68,11 +78,12 @@ class LLMClient:
         module: str,
         purpose: str,
     ) -> LLMResult:
+        sdk = self._prepare()
         self._check_daily_limit()
         started = self.monotonic()
         for attempt in range(3):
             try:
-                response = self.sdk.chat.completions.create(
+                response = sdk.chat.completions.create(
                     model=self.config.model,
                     messages=messages,
                     **self._optional_params(tools, response_format),
