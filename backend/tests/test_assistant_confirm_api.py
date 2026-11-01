@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.assistant.models import AssistantRecord, AssistantStatus
 from app.modules.life.models import Event, Reminder, Todo, Transaction
+from app.modules.pantry.models import Ingredient
 
 PASSWORD = "correct-horse-123"
 
@@ -181,6 +182,54 @@ def test_confirm_multiple_actions_rolls_back_all_when_one_fails(
     assert record.result_ref is None and record.executed_at is None
 
 
+def test_confirm_ingredient_allows_user_edits_and_creates_batch(
+    client: TestClient, db_session: Session
+) -> None:
+    headers, user = auth_headers(client)
+    original = {"name": "鸡蛋", "quantity": 2, "unit": "个"}
+    record = pending_record(
+        db_session, user["id"], [{"tool": "add_ingredient", "args": original}]
+    )
+    edited = {
+        "name": " 可生食鸡蛋 ",
+        "quantity": "6.50",
+        "unit": "个",
+        "expire_on": "2026-11-08",
+        "storage": "fridge",
+    }
+
+    response = confirm(
+        client, headers, record.id, [{"tool": "add_ingredient", "args": edited}]
+    )
+
+    assert response.status_code == 200, response.text
+    ingredient = db_session.execute(select(Ingredient)).scalar_one()
+    assert ingredient.name == "可生食鸡蛋"
+    assert str(ingredient.quantity) == "6.50"
+    assert ingredient.expire_on.isoformat() == "2026-11-08"
+    assert ingredient.storage == "fridge"
+    assert response.json()["data"]["results"] == [
+        {"tool": "add_ingredient", "ref": f"ingredient:{ingredient.id}", "id": ingredient.id}
+    ]
+
+
+def test_confirm_ingredient_rolls_back_when_later_action_fails(
+    client: TestClient, db_session: Session
+) -> None:
+    headers, user = auth_headers(client)
+    actions = [
+        {"tool": "add_ingredient", "args": {"name": "鸡蛋", "quantity": 6, "unit": "个"}},
+        {"tool": "add_expense", "args": {"amount": 20, "category": "不存在的分类"}},
+    ]
+    record = pending_record(db_session, user["id"], actions)
+
+    response = confirm(client, headers, record.id, actions)
+
+    assert response.status_code == 422 and response.json()["code"] == 42201
+    assert db_session.scalar(select(func.count()).select_from(Ingredient)) == 0
+    assert db_session.scalar(select(func.count()).select_from(Transaction)) == 0
+
+
 def test_confirm_is_idempotent_and_repeated_request_returns_conflict(
     client: TestClient, db_session: Session
 ) -> None:
@@ -230,13 +279,13 @@ def test_confirm_rejects_invalid_or_unsupported_actions_and_marks_failed(
     unsupported = pending_record(
         db_session,
         user["id"],
-        [{"tool": "add_ingredient", "args": {"name": "鸡蛋", "quantity": 6, "unit": "个"}}],
+        [{"tool": "save_bookmark", "args": {"url": "https://example.com"}}],
     )
     unsupported_response = confirm(
         client,
         headers,
         unsupported.id,
-        [{"tool": "add_ingredient", "args": {"name": "鸡蛋", "quantity": 6, "unit": "个"}}],
+        [{"tool": "save_bookmark", "args": {"url": "https://example.com"}}],
     )
 
     assert invalid_response.status_code == 422

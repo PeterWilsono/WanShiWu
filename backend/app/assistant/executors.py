@@ -10,6 +10,7 @@ from app.core.time import now_utc
 from app.llm.schemas import (
     AddExpenseArgs,
     AddIncomeArgs,
+    AddIngredientArgs,
     CreateEventArgs,
     CreateTodoArgs,
     MoneyArgs,
@@ -18,6 +19,8 @@ from app.llm.schemas import (
 from app.modules.life.models import Category, TransactionType
 from app.modules.life.schemas import EventCreate, TodoCreate, TransactionCreate
 from app.modules.life.service import create_event, create_todo, create_transaction
+from app.modules.pantry.schemas import IngredientCreate
+from app.modules.pantry.service import create_ingredient
 
 ActionResult = tuple[str, int]
 ActionHandler = Callable[[Session, int, ToolArgs], ActionResult]
@@ -63,6 +66,17 @@ def _create_money(db: Session, user_id: int, args: MoneyArgs, kind: str) -> Acti
     return "transaction", transaction.id
 
 
+def _add_ingredient(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
+    assert isinstance(args, AddIngredientArgs)
+    ingredient = create_ingredient(
+        db,
+        user_id,
+        IngredientCreate.model_validate(args.model_dump()),
+        commit=False,
+    )
+    return "ingredient", ingredient.id
+
+
 def _add_expense(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
     assert isinstance(args, AddExpenseArgs)
     return _create_money(db, user_id, args, "expense")
@@ -78,4 +92,5 @@ DISPATCH: dict[str, ActionHandler] = {
     "create_event": _create_event,
     "add_expense": _add_expense,
     "add_income": _add_income,
+    "add_ingredient": _add_ingredient,
 }

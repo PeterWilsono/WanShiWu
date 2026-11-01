@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { cancelAssistantRecord, confirmAssistant, parseAssistant } from '../api/assistant'
 import { ApiError } from '../api/http'
 import type { ActionResult, AssistantAction, AssistantTool } from '../types/assistant'
+import type { IngredientUnit, Storage } from '../types/pantry'
 import { yuanToCents } from '../utils/money'
 
 const router = useRouter()
@@ -19,7 +20,9 @@ const recordId = ref<number | null>(null)
 const drafts = ref<ActionDraft[]>([])
 const results = ref<ActionResult[]>([])
 
-const supportedTools: AssistantTool[] = ['create_todo', 'create_event', 'add_expense', 'add_income']
+const supportedTools: AssistantTool[] = [
+  'create_todo', 'create_event', 'add_expense', 'add_income', 'add_ingredient',
+]
 
 interface ActionDraft {
   tool: AssistantTool
@@ -36,6 +39,11 @@ interface ActionDraft {
   amount: string
   category: string
   occurredAt: Date | null
+  name: string
+  quantity: string
+  unit: IngredientUnit
+  expireOn: string
+  storage: Storage
 }
 
 function optionalDate(value: unknown): Date | null {
@@ -59,6 +67,11 @@ function toDraft(action: AssistantAction): ActionDraft {
     amount: args.amount === undefined ? '' : String(args.amount),
     category: String(args.category ?? ''),
     occurredAt: optionalDate(args.occurred_at),
+    name: String(args.name ?? ''),
+    quantity: args.quantity === undefined ? '' : String(args.quantity),
+    unit: String(args.unit ?? '个') as IngredientUnit,
+    expireOn: String(args.expire_on ?? ''),
+    storage: String(args.storage ?? 'room') as Storage,
   }
 }
 
@@ -119,6 +132,18 @@ function toAction(draft: ActionDraft): AssistantAction {
       location: draft.location.trim() || null,
       remind_before_min: draft.remindBeforeMin,
     })
+  } else if (draft.tool === 'add_ingredient') {
+    const quantity = draft.quantity.trim()
+    if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(quantity) || Number(quantity) <= 0) {
+      throw new Error('食材数量必须大于 0，且最多保留两位小数')
+    }
+    Object.assign(args, {
+      name: draft.name.trim(),
+      quantity,
+      unit: draft.unit,
+      expire_on: draft.expireOn || null,
+      storage: draft.storage,
+    })
   } else if (draft.tool === 'add_expense' || draft.tool === 'add_income') {
     const cents = yuanToCents(draft.amount)
     if (cents === null) throw new Error('金额必须是大于 0 且最多两位小数的数字')
@@ -143,6 +168,9 @@ function validateDrafts(actions: AssistantAction[]): void {
     }
     if ((action.tool === 'add_expense' || action.tool === 'add_income') && !action.args.category) {
       throw new Error('请选择或填写收支分类')
+    }
+    if (action.tool === 'add_ingredient' && !action.args.name) {
+      throw new Error('食材名称不能为空')
     }
   }
 }
@@ -186,6 +214,7 @@ async function handleCancel(): Promise<void> {
 function resultRoute(result: ActionResult): string {
   if (result.ref.startsWith('todo:')) return '/todos'
   if (result.ref.startsWith('event:')) return '/events'
+  if (result.ref.startsWith('ingredient:')) return '/pantry'
   return '/transactions'
 }
 
@@ -214,7 +243,7 @@ function toolName(tool: AssistantTool): string {
       type="textarea"
       :rows="2"
       maxlength="2000"
-      placeholder="例如：明天下午三点约了牙医；午饭花了35"
+      placeholder="例如：明天下午三点约了牙医；买了 6 个鸡蛋放冷藏"
       @keydown.ctrl.enter="handleParse"
     />
     <div class="assistant__parse-row">
@@ -275,13 +304,32 @@ function toolName(tool: AssistantTool): string {
               <el-form-item label="提前提醒（分钟）"><el-input-number v-model="draft.remindBeforeMin" :min="0" class="full-width" /></el-form-item>
             </div>
           </template>
-          <template v-else>
+          <template v-else-if="draft.tool === 'add_expense' || draft.tool === 'add_income'">
             <div class="draft-form__grid">
               <el-form-item label="金额（元）" required><el-input v-model="draft.amount" placeholder="例如 35.50" /></el-form-item>
               <el-form-item label="分类" required><el-input v-model="draft.category" maxlength="30" placeholder="例如 餐饮" /></el-form-item>
             </div>
             <el-form-item label="发生时间"><el-date-picker v-model="draft.occurredAt" type="datetime" class="full-width" /></el-form-item>
             <el-form-item label="备注"><el-input v-model="draft.note" maxlength="200" /></el-form-item>
+          </template>
+          <template v-else>
+            <el-form-item label="食材名称" required><el-input v-model="draft.name" maxlength="50" /></el-form-item>
+            <div class="draft-form__grid">
+              <el-form-item label="数量" required><el-input v-model="draft.quantity" placeholder="例如 6 或 2.50" /></el-form-item>
+              <el-form-item label="单位" required>
+                <el-select v-model="draft.unit" class="full-width">
+                  <el-option v-for="unit in ['个', '克', '千克', '毫升', '升', '包', '瓶']" :key="unit" :label="unit" :value="unit" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="保质期">
+                <el-date-picker v-model="draft.expireOn" type="date" value-format="YYYY-MM-DD" class="full-width" />
+              </el-form-item>
+              <el-form-item label="存放方式">
+                <el-select v-model="draft.storage" class="full-width">
+                  <el-option label="冷藏" value="fridge" /><el-option label="冷冻" value="freezer" /><el-option label="常温" value="room" />
+                </el-select>
+              </el-form-item>
+            </div>
           </template>
         </el-form>
       </el-card>
@@ -296,7 +344,7 @@ function toolName(tool: AssistantTool): string {
     <el-result v-if="results.length" icon="success" title="写入成功" sub-title="数据已由业务代码保存，可前往对应模块查看。">
       <template #extra>
         <el-button v-for="result in results" :key="result.ref" type="primary" plain @click="router.push(resultRoute(result))">
-          查看{{ toolName(result.tool).replace('新建', '').replace('记一笔', '') }}
+          查看{{ toolName(result.tool).replace('新建', '').replace('记一笔', '').replace('添加', '') }}
         </el-button>
         <el-button @click="results = []">继续输入</el-button>
       </template>
