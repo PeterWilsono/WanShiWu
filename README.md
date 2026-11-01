@@ -45,6 +45,28 @@ npm run dev                     # http://localhost:5173
 cd backend && pytest
 ```
 
+### Docker Compose（已安装 Docker 时）
+
+```bash
+docker compose up --build
+```
+
+浏览器仍访问 **http://127.0.0.1:5173**。后端启动前自动执行 Alembic 迁移，前端 Nginx 将 `/api` 转发到后端；SQLite 数据保存在 `wanshiwu-data` 命名卷中，删除容器不会直接删除数据。可在项目根目录 `.env` 设置 `JWT_SECRET`、`LLM_API_KEY` 等 Compose 变量；部署到公网前必须更换默认 JWT 密钥。
+
+当前开发机未安装 Docker，因此配置与 YAML 语法已检查，但容器构建和启动尚未本机验收。
+
+### 数据库备份
+
+在项目和现有虚拟环境均已准备好的情况下，从根目录运行：
+
+```bash
+backend\.venv\Scripts\python.exe scripts\backup_db.py
+```
+
+备份默认写入 `backups/`，使用 SQLite Online Backup API，并通过 `PRAGMA integrity_check` 后才生成正式文件；不会覆盖已有备份。可用 `--source` 和 `--output` 指定源数据库与目标文件。
+
+CI 位于 `.github/workflows/ci.yml`，包含后端 Ruff、pytest 和 80% 覆盖率门槛，以及前端依赖安装与生产构建。
+
 ## 项目状态
 
 - [x] 阶段 0 · 项目初始化
@@ -55,7 +77,7 @@ cd backend && pytest
 - [x] 阶段 5 · 食材管家 P0/P1：库存、临期、购物、做菜扣减与 AI 菜谱
 - [x] 阶段 6 · 收藏箱 P0/P1：标签、全文搜索、安全抓取、AI 摘要与每周回顾
 - [x] 阶段 7 · 旅行规划 P0/P1：每日安排、预算、AI 草稿、重排序与 Markdown 导出
-- [ ] 阶段 8 · 完整交付验收与后续增强
+- [x] 阶段 8 · 一键启动、Docker/Compose、CI、备份脚本与项目文档
 
 当前四个模块的 P0/P1 主要流程均已落地，但不等于说明书全部版本已经完成。RAG 知识库、PDF/ICS 导出、地图与路线等 P2 增强尚未实现；真实模型质量、真实网页抓取、浏览器细节交互和真机 PWA 仍需单独验收。各小阶段的真实验证记录见阶段文档。
 
