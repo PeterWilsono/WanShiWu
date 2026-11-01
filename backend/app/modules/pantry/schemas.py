@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.pantry.models import IngredientStatus, IngredientUnit, ShoppingSource, Storage
 
@@ -250,6 +250,7 @@ class Recipe(BaseModel):
 
 class RecipeRecommendResponse(BaseModel):
     recipes: list[Recipe] = Field(min_length=3, max_length=3)
+    inventory_empty: bool = False
 
 
 class LLMRecipeIngredient(RecipeIngredient):
@@ -259,13 +260,19 @@ class LLMRecipeIngredient(RecipeIngredient):
 
 
 class LLMRecipe(Recipe):
-    """兼容常见数字字符串；业务约束和库存重核算保持不变。"""
+    """兼容数字字符串；空库存时允许 uses 为空，由服务端统一列入缺料。"""
 
     model_config = ConfigDict(extra="ignore")
 
     minutes: int = Field(strict=False, ge=1, le=480)
-    uses: list[LLMRecipeIngredient] = Field(min_length=1, max_length=50)
+    uses: list[LLMRecipeIngredient] = Field(max_length=50)
     missing: list[LLMRecipeIngredient] = Field(max_length=50)
+
+    @model_validator(mode="after")
+    def require_ingredients(self) -> "LLMRecipe":
+        if not self.uses and not self.missing:
+            raise ValueError("每道菜至少需要一项食材")
+        return self
 
 
 class LLMRecipeOutput(BaseModel):

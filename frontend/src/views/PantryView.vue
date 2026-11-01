@@ -36,6 +36,7 @@ const storageOptions: { value: Storage; label: string }[] = [
 const activeTab = ref('inventory')
 const ingredients = ref<Ingredient[]>([])
 const inventoryTotal = ref(0)
+const availableInventoryTotal = ref<number | null>(null)
 const inventoryPage = ref(1)
 const inventoryPageSize = 20
 const storageFilter = ref<Storage | ''>('')
@@ -97,14 +98,18 @@ async function loadInventory(): Promise<void> {
   inventoryLoading.value = true
   inventoryError.value = ''
   try {
-    const result = await listIngredients({
-      page: inventoryPage.value,
-      page_size: inventoryPageSize,
-      status: 'active',
-      storage: storageFilter.value || undefined,
-    })
+    const [result, availability] = await Promise.all([
+      listIngredients({
+        page: inventoryPage.value,
+        page_size: inventoryPageSize,
+        status: 'active',
+        storage: storageFilter.value || undefined,
+      }),
+      listIngredients({ page: 1, page_size: 1, status: 'active' }),
+    ])
     ingredients.value = result.items
     inventoryTotal.value = result.total
+    availableInventoryTotal.value = availability.total
   } catch (error) {
     inventoryError.value = messageOf(error, '库存加载失败，请稍后重试')
   } finally {
@@ -474,7 +479,12 @@ onMounted(() => {
       </el-tab-pane>
 
       <el-tab-pane label="AI 菜谱" name="recipes">
-        <RecipePanel @cooked="handleRecipeCooked" @shopping-added="handleShoppingAdded" />
+        <RecipePanel
+          :inventory-total="availableInventoryTotal"
+          @cooked="handleRecipeCooked"
+          @shopping-added="handleShoppingAdded"
+          @add-ingredient="openIngredient()"
+        />
       </el-tab-pane>
     </el-tabs>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { addRecipeMissingToShopping, cookRecipe, recommendRecipes } from '../api/pantry'
 import { ApiError } from '../api/http'
@@ -8,10 +8,13 @@ import type { Recipe } from '../types/pantry'
 import { formatQuantity } from '../utils/quantity'
 import AppIcon from './AppIcon.vue'
 
-const emit = defineEmits<{ cooked: []; shoppingAdded: [] }>()
+const props = defineProps<{ inventoryTotal: number | null }>()
+const emit = defineEmits<{ cooked: []; shoppingAdded: []; addIngredient: [] }>()
+const emptyInventory = computed(() => props.inventoryTotal === 0)
 const preferences = ref('')
 const servings = ref(2)
 const recipes = ref<Recipe[]>([])
+const inventoryEmptyResult = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
 const cooking = ref<Recipe | null>(null)
@@ -26,12 +29,15 @@ async function recommend(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
   recipes.value = []
+  inventoryEmptyResult.value = false
   added.value = []
   try {
-    recipes.value = await recommendRecipes({
+    const result = await recommendRecipes({
       preferences: preferences.value.trim() || undefined,
       servings: servings.value,
     })
+    recipes.value = result.recipes
+    inventoryEmptyResult.value = result.inventory_empty
   } catch (error) {
     errorMessage.value = messageOf(error, '菜谱推荐失败，请稍后重试')
   } finally {
@@ -80,9 +86,9 @@ async function addMissing(recipe: Recipe): Promise<void> {
   <section class="recipe-panel">
     <div class="recipe-intro">
       <div>
-        <p class="recipe-kicker">从现有食材出发</p>
+        <p class="recipe-kicker">{{ emptyInventory ? '先选菜谱，再按需买菜' : '从现有食材出发' }}</p>
         <h2>今天，做一顿刚好的饭</h2>
-        <p>优先参考临期食材；库存与缺料由服务端重新核算。</p>
+        <p>{{ emptyInventory ? '没有库存也能推荐；所需食材可以一键加入购物清单。' : '优先参考临期食材；库存与缺料由服务端重新核算。' }}</p>
       </div>
       <AppIcon name="food" :size="38" :stroke-width="1.2" />
     </div>
@@ -97,9 +103,20 @@ async function addMissing(recipe: Recipe): Promise<void> {
       <el-input-number v-model="servings" :min="1" :max="12" aria-label="用餐人数" />
       <span class="servings-label">人份</span>
       <el-button type="primary" native-type="submit" :loading="loading">
-        {{ loading ? '正在搭配…' : '推荐三道菜' }}
+        {{ loading ? '正在搭配…' : emptyInventory ? '推荐菜谱与买菜清单' : '推荐三道菜' }}
       </el-button>
     </form>
+    <el-alert
+      v-if="emptyInventory && !recipes.length && !errorMessage"
+      title="当前没有可用食材，也可以先让 AI 推荐"
+      type="info"
+      show-icon
+      :closable="false"
+      class="inventory-notice"
+    >
+      <p>填写口味和人数后直接推荐，所有用料都会列为待购买；也可以先录入现有食材。</p>
+      <el-button size="small" @click="emit('addIngredient')">先录入食材</el-button>
+    </el-alert>
     <el-alert v-if="errorMessage" :title="errorMessage" type="error" show-icon :closable="false">
       <el-button size="small" @click="recommend">重新推荐</el-button>
     </el-alert>
@@ -107,11 +124,13 @@ async function addMissing(recipe: Recipe): Promise<void> {
     <section v-loading="loading" class="recipe-results" aria-live="polite">
       <div v-if="!recipes.length && !loading && !errorMessage" class="recipe-empty">
         <AppIcon name="sparkle" :size="28" />
-        <h3>让库存先决定菜单</h3>
-        <p>写下偏好和人数，AI 会给出三道候选；确认做菜后才会扣减库存。</p>
+        <h3>{{ emptyInventory ? '没有食材，也能先决定吃什么' : '让库存先决定菜单' }}</h3>
+        <p>{{ emptyInventory ? '写下“清淡少油”等偏好，AI 会推荐三道菜和完整采购用料。' : '写下偏好和人数，AI 会给出三道候选；确认做菜后才会扣减库存。' }}</p>
       </div>
       <template v-else>
-        <p v-if="recipes.length" class="ai-notice">AI 生成，请自行核实食材状态、用量与烹饪安全。</p>
+        <p v-if="recipes.length" class="ai-notice">
+          {{ inventoryEmptyResult ? '当前按空库存推荐，所有用料均需购买；' : '' }}AI 生成，请自行核实食材状态、用量与烹饪安全。
+        </p>
         <div class="recipe-grid">
           <article v-for="recipe in recipes" :key="recipe.name" class="recipe-card">
             <header>
@@ -119,7 +138,7 @@ async function addMissing(recipe: Recipe): Promise<void> {
               <span class="recipe-time"><AppIcon name="clock" :size="15" />{{ recipe.minutes }} 分钟</span>
             </header>
             <div class="ingredient-lines">
-              <section>
+              <section v-if="!inventoryEmptyResult || recipe.uses.length">
                 <h4>现有食材</h4>
                 <p v-if="!recipe.uses.length" class="muted">暂无匹配库存</p>
                 <ul><li v-for="item in recipe.uses" :key="`${item.name}-${item.unit}`">
@@ -127,7 +146,7 @@ async function addMissing(recipe: Recipe): Promise<void> {
                 </li></ul>
               </section>
               <section v-if="recipe.missing.length" class="missing-lines">
-                <h4>还需补购</h4>
+                <h4>{{ inventoryEmptyResult ? '需要购买' : '还需补购' }}</h4>
                 <ul><li v-for="item in recipe.missing" :key="`${item.name}-${item.unit}`">
                   <span>{{ item.name }}</span><strong>{{ formatQuantity(item.quantity) }}{{ item.unit }}</strong>
                 </li></ul>
@@ -142,7 +161,7 @@ async function addMissing(recipe: Recipe): Promise<void> {
               <el-button
                 size="small" :disabled="!recipe.missing.length || added.includes(recipe)"
                 :loading="adding === recipe" @click="addMissing(recipe)"
-              >{{ added.includes(recipe) ? '已加入清单' : '把缺的加入购物清单' }}</el-button>
+              >{{ added.includes(recipe) ? '已加入清单' : inventoryEmptyResult ? '全部加入购物清单' : '把缺的加入购物清单' }}</el-button>
               <el-button
                 size="small" type="primary" :disabled="!!recipe.missing.length || !recipe.uses.length"
                 :loading="cooking === recipe" @click="cook(recipe)"
@@ -165,6 +184,8 @@ async function addMissing(recipe: Recipe): Promise<void> {
 .recipe-controls { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
 .recipe-controls .el-input { flex: 1; }
 .recipe-controls .el-input-number { width: 120px; }
+.recipe-panel :deep(.el-alert) { margin-bottom: 18px; }
+.inventory-notice p { margin: 0 0 10px; line-height: 1.7; }
 .servings-label { margin-left: -8px; color: var(--ink-muted); font-size: 12px; }
 .recipe-results { min-height: 250px; }
 .recipe-empty { padding: 55px 20px; border: 1px dashed var(--line); text-align: center; }

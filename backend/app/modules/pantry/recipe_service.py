@@ -58,6 +58,7 @@ def _messages(
         "today": today,
         "servings": data.servings,
         "preferences": data.preferences,
+        "recommendation_mode": "inventory_first" if inventory else "free_with_shopping_list",
         "inventory": [
             {
                 "name": item.name,
@@ -75,8 +76,11 @@ def _messages(
     ]
 
 
-def _validate_output(text: str) -> LLMRecipeOutput:
-    return LLMRecipeOutput.model_validate(parse_json_object(text))
+def _validate_output(text: str, *, inventory_empty: bool) -> LLMRecipeOutput:
+    output = LLMRecipeOutput.model_validate(parse_json_object(text))
+    if not inventory_empty and any(not recipe.uses for recipe in output.recipes):
+        raise ValueError("有库存时每道菜至少需要一项现有食材")
+    return output
 
 
 def _reconcile(output: LLMRecipeOutput, inventory: list[Ingredient]) -> RecipeRecommendResponse:
@@ -111,7 +115,7 @@ def _reconcile(output: LLMRecipeOutput, inventory: list[Ingredient]) -> RecipeRe
                 steps=candidate.steps,
             )
         )
-    return RecipeRecommendResponse(recipes=recipes)
+    return RecipeRecommendResponse(recipes=recipes, inventory_empty=not inventory)
 
 
 def recommend_recipes(
@@ -129,7 +133,7 @@ def recommend_recipes(
     inventory = _inventory(db, user.id)
     messages = _messages(inventory, data, today)
     validated: LLMRecipeOutput | None = None
-    last_error: json.JSONDecodeError | ValidationError | None = None
+    last_error: ValueError | ValidationError | None = None
 
     for attempt in range(2):
         result = llm.chat(
@@ -139,9 +143,9 @@ def recommend_recipes(
             purpose="recipe",
         )
         try:
-            validated = _validate_output(result.text)
+            validated = _validate_output(result.text, inventory_empty=not inventory)
             break
-        except (json.JSONDecodeError, ValidationError) as exc:
+        except (ValueError, ValidationError) as exc:
             last_error = exc
             if attempt == 0:
                 messages.append(

@@ -108,6 +108,7 @@ def test_recipe_prompt_and_stock_reconciliation_use_only_current_user(
 
     assert response.status_code == 200, response.text
     recipes = response.json()["data"]["recipes"]
+    assert response.json()["data"]["inventory_empty"] is False
     assert len(recipes) == 3
     assert recipes[0]["uses"] == [{"name": "鸡蛋", "quantity": "2.00", "unit": "个"}]
     assert recipes[0]["missing"] == [{"name": "鸡蛋", "quantity": "1.00", "unit": "个"}]
@@ -125,6 +126,41 @@ def test_recipe_prompt_and_stock_reconciliation_use_only_current_user(
     assert user_data["servings"] == 3 and user_data["preferences"] == "清淡，少油"
     assert [item["name"] for item in user_data["inventory"]] == ["番茄", "鸡蛋"]
     assert "秘密食材" not in call["messages"][1]["content"]
+
+
+def test_empty_inventory_recommends_recipes_and_complete_shopping_list(
+    client: TestClient,
+) -> None:
+    headers = auth_headers(client)
+    payload = recipe_payload()
+    for recipe in payload["recipes"]:
+        recipe["missing"] = [*recipe["uses"], *recipe["missing"]]
+        recipe["uses"] = []
+    fake = FakeLLMClient([llm_result(payload), llm_result(payload)])
+    use_fake(fake)
+
+    response = recommend(client, headers, preferences="清淡少油", servings=2)
+
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["inventory_empty"] is True
+    assert len(data["recipes"]) == 3
+    assert all(not recipe["uses"] for recipe in data["recipes"])
+    assert all(recipe["missing"] for recipe in data["recipes"])
+    prompt_data = json.loads(fake.calls[0]["messages"][1]["content"])
+    assert prompt_data["inventory"] == []
+    assert prompt_data["recommendation_mode"] == "free_with_shopping_list"
+
+    shopping = client.post(
+        "/api/v1/pantry/recipes/shopping-items",
+        headers=headers,
+        json={
+            "recipe_name": data["recipes"][0]["name"],
+            "missing": data["recipes"][0]["missing"],
+        },
+    )
+    assert shopping.status_code == 200, shopping.text
+    assert len(shopping.json()["data"]["items"]) == 1
 
 
 def test_recipe_accepts_fenced_verbose_output_and_ignores_extra_metadata(
@@ -176,6 +212,16 @@ def test_recipe_invalid_output_retries_once_then_accepts_valid_json(client: Test
         "```json\n{}\n```",
         [],
         {"recipes": []},
+        {
+            "recipes": [
+                {
+                    **recipe_payload()["recipes"][0],
+                    "uses": [],
+                    "missing": [],
+                },
+                *recipe_payload()["recipes"][1:],
+            ]
+        },
         {
             "recipes": [
                 {

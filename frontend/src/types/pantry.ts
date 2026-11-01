@@ -114,6 +114,11 @@ export interface RecipeRecommendRequest {
   servings: number
 }
 
+export interface RecipeRecommendResponse {
+  recipes: Recipe[]
+  inventory_empty: boolean
+}
+
 export interface CookRequest {
   recipe_name: string
   uses: RecipeIngredient[]

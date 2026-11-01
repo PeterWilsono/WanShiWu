@@ -10,9 +10,9 @@ import type {
   IngredientPayload,
   IngredientUnit,
   Page,
-  Recipe,
   RecipeIngredient,
   RecipeRecommendRequest,
+  RecipeRecommendResponse,
   RecipeShoppingResult,
   ShoppingItem,
   ShoppingItemPayload,
@@ -50,13 +50,15 @@ export async function consumeIngredient(data: {
   return response.data.data
 }
 
-export async function recommendRecipes(data: RecipeRecommendRequest): Promise<Recipe[]> {
-  const response = await http.post<ApiResponse<{ recipes: Recipe[] }>>(
+export async function recommendRecipes(
+  data: RecipeRecommendRequest,
+): Promise<RecipeRecommendResponse> {
+  const response = await http.post<ApiResponse<RecipeRecommendResponse>>(
     '/pantry/recipes',
     data,
     { timeout: 100_000 },
   )
-  return response.data.data.recipes
+  return response.data.data
 }
 
 export async function cookRecipe(data: CookRequest): Promise<CookResult> {
