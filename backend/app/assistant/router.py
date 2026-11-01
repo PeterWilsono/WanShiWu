@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.assistant.dependencies import LLMClientDependency
@@ -19,6 +19,7 @@ from app.assistant.service import cancel_record, confirm_actions, list_records, 
 from app.core.response import ok
 from app.db.session import get_db
 from app.modules.auth.dependencies import CurrentUser
+from app.modules.inbox.dependencies import BookmarkProcessor
 
 router = APIRouter(prefix="/assistant", tags=["AI 助手"])
 DbSession = Annotated[Session, Depends(get_db)]
@@ -37,9 +38,16 @@ def parse_endpoint(
 
 @router.post("/confirm")
 def confirm_endpoint(
-    payload: ConfirmRequest, db: DbSession, current_user: CurrentUser
+    payload: ConfirmRequest,
+    db: DbSession,
+    current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
+    processor: BookmarkProcessor,
 ) -> dict[str, object]:
     result: ConfirmResponse = confirm_actions(db, current_user, payload)
+    for item in result.results:
+        if item.tool == "save_bookmark":
+            background_tasks.add_task(processor, item.id, current_user.id)
     return ok(result.model_dump(mode="json"), message="已确认并写入")
 
 

@@ -24,6 +24,7 @@ withDefaults(defineProps<{ name: string; size?: number; strokeWidth?: number }>(
     <template v-else-if="name === 'wallet'"><path d="M4 6.5h14a2 2 0 0 1 2 2V19H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12v3.5"/><path d="M15 11h6v5h-6a2.5 2.5 0 0 1 0-5Z"/><path d="M15.5 13.5h.01"/></template>
     <template v-else-if="name === 'chart'"><path d="M4 20V10m6 10V4m6 16v-7m5 7H2"/></template>
     <template v-else-if="name === 'pantry'"><path d="M6 3h12l1 5v12H5V8l1-5Z"/><path d="M5 8h14M9 12h6M9 16h4"/></template>
+    <template v-else-if="name === 'bookmark'"><path d="M6 3h12v18l-6-4-6 4V3Z"/><path d="M9 7h6M9 11h4"/></template>
     <template v-else-if="name === 'bell'"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></template>
     <template v-else-if="name === 'arrow'"><path d="M5 12h14m-5-5 5 5-5 5"/></template>
     <template v-else-if="name === 'sparkle'"><path d="m12 3 1.4 4.6L18 9l-4.6 1.4L12 15l-1.4-4.6L6 9l4.6-1.4L12 3Z"/><path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z"/></template>

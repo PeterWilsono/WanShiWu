@@ -17,6 +17,7 @@ const navigation = [
   { name: 'calendar', label: '日历', icon: 'calendar' },
   { name: 'transactions', label: '账目', icon: 'wallet' },
   { name: 'pantry', label: '食材', icon: 'pantry' },
+  { name: 'inbox', label: '收藏', icon: 'bookmark' },
 ]
 
 function isActive(name: string): boolean {

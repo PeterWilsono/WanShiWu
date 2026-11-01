@@ -14,8 +14,11 @@ from app.llm.schemas import (
     CreateEventArgs,
     CreateTodoArgs,
     MoneyArgs,
+    SaveBookmarkArgs,
     ToolArgs,
 )
+from app.modules.inbox.schemas import BookmarkCreate
+from app.modules.inbox.service import create_bookmark
 from app.modules.life.models import Category, TransactionType
 from app.modules.life.schemas import EventCreate, TodoCreate, TransactionCreate
 from app.modules.life.service import create_event, create_todo, create_transaction
@@ -77,6 +80,17 @@ def _add_ingredient(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
     return "ingredient", ingredient.id
 
 
+def _save_bookmark(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
+    assert isinstance(args, SaveBookmarkArgs)
+    bookmark = create_bookmark(
+        db,
+        user_id,
+        BookmarkCreate(url=str(args.url), note=args.note),
+        commit=False,
+    )
+    return "bookmark", bookmark.id
+
+
 def _add_expense(db: Session, user_id: int, args: ToolArgs) -> ActionResult:
     assert isinstance(args, AddExpenseArgs)
     return _create_money(db, user_id, args, "expense")
@@ -93,4 +107,5 @@ DISPATCH: dict[str, ActionHandler] = {
     "add_expense": _add_expense,
     "add_income": _add_income,
     "add_ingredient": _add_ingredient,
+    "save_bookmark": _save_bookmark,
 }

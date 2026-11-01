@@ -21,7 +21,7 @@ const drafts = ref<ActionDraft[]>([])
 const results = ref<ActionResult[]>([])
 
 const supportedTools: AssistantTool[] = [
-  'create_todo', 'create_event', 'add_expense', 'add_income', 'add_ingredient',
+  'create_todo', 'create_event', 'add_expense', 'add_income', 'add_ingredient', 'save_bookmark',
 ]
 
 interface ActionDraft {
@@ -44,6 +44,7 @@ interface ActionDraft {
   unit: IngredientUnit
   expireOn: string
   storage: Storage
+  url: string
 }
 
 function optionalDate(value: unknown): Date | null {
@@ -72,6 +73,7 @@ function toDraft(action: AssistantAction): ActionDraft {
     unit: String(args.unit ?? '个') as IngredientUnit,
     expireOn: String(args.expire_on ?? ''),
     storage: String(args.storage ?? 'room') as Storage,
+    url: String(args.url ?? ''),
   }
 }
 
@@ -144,6 +146,8 @@ function toAction(draft: ActionDraft): AssistantAction {
       expire_on: draft.expireOn || null,
       storage: draft.storage,
     })
+  } else if (draft.tool === 'save_bookmark') {
+    Object.assign(args, { url: draft.url.trim(), note: draft.note.trim() || null })
   } else if (draft.tool === 'add_expense' || draft.tool === 'add_income') {
     const cents = yuanToCents(draft.amount)
     if (cents === null) throw new Error('金额必须是大于 0 且最多两位小数的数字')
@@ -171,6 +175,9 @@ function validateDrafts(actions: AssistantAction[]): void {
     }
     if (action.tool === 'add_ingredient' && !action.args.name) {
       throw new Error('食材名称不能为空')
+    }
+    if (action.tool === 'save_bookmark' && !/^https?:\/\//.test(String(action.args.url))) {
+      throw new Error('收藏链接必须以 http:// 或 https:// 开头')
     }
   }
 }
@@ -215,7 +222,12 @@ function resultRoute(result: ActionResult): string {
   if (result.ref.startsWith('todo:')) return '/todos'
   if (result.ref.startsWith('event:')) return '/events'
   if (result.ref.startsWith('ingredient:')) return '/pantry'
+  if (result.ref.startsWith('bookmark:')) return '/inbox'
   return '/transactions'
+}
+
+function goToResult(result: ActionResult): void {
+  void router.push(resultRoute(result))
 }
 
 function toolName(tool: AssistantTool): string {
@@ -312,7 +324,11 @@ function toolName(tool: AssistantTool): string {
             <el-form-item label="发生时间"><el-date-picker v-model="draft.occurredAt" type="datetime" class="full-width" /></el-form-item>
             <el-form-item label="备注"><el-input v-model="draft.note" maxlength="200" /></el-form-item>
           </template>
-          <template v-else>
+          <template v-else-if="draft.tool === 'save_bookmark'">
+            <el-form-item label="链接" required><el-input v-model="draft.url" placeholder="https://example.com/article" /></el-form-item>
+            <el-form-item label="备注"><el-input v-model="draft.note" type="textarea" :rows="2" maxlength="500" /></el-form-item>
+          </template>
+          <template v-if="draft.tool === 'add_ingredient'">
             <el-form-item label="食材名称" required><el-input v-model="draft.name" maxlength="50" /></el-form-item>
             <div class="draft-form__grid">
               <el-form-item label="数量" required><el-input v-model="draft.quantity" placeholder="例如 6 或 2.50" /></el-form-item>
@@ -343,7 +359,7 @@ function toolName(tool: AssistantTool): string {
 
     <el-result v-if="results.length" icon="success" title="写入成功" sub-title="数据已由业务代码保存，可前往对应模块查看。">
       <template #extra>
-        <el-button v-for="result in results" :key="result.ref" type="primary" plain @click="router.push(resultRoute(result))">
+        <el-button v-for="result in results" :key="result.ref" type="primary" plain @click="goToResult(result)">
           查看{{ toolName(result.tool).replace('新建', '').replace('记一笔', '').replace('添加', '') }}
         </el-button>
         <el-button @click="results = []">继续输入</el-button>

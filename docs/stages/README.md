@@ -55,5 +55,6 @@
 | [阶段 6.2](06-2-bookmark-crud-search.md) | 收藏 CRUD、手动标签、用户隔离与 FTS5 搜索 | 已完成 |
 | [阶段 6.3](06-3-inbox-fetch-summary.md) | SSRF 防护、异步抓取、AI 摘要标签与手动正文兜底 | 已完成 |
 | [阶段 6.4](06-4-weekly-digests.md) | 用户时区周报、幂等生成、调度任务与历史列表 | 已完成 |
+| [阶段 6.5](06-5-inbox-frontend-assistant.md) | 收藏页面、导航、搜索筛选、正文兜底与 AI 收藏确认 | 已完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

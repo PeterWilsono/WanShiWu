@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.assistant.models import AssistantRecord, AssistantStatus
+from app.modules.inbox.models import Bookmark
 from app.modules.life.models import Event, Reminder, Todo, Transaction
 from app.modules.pantry.models import Ingredient
 
@@ -261,6 +262,24 @@ def test_confirm_other_users_record_returns_404_without_execution(
     assert record.status == AssistantStatus.PENDING
 
 
+def test_confirm_save_bookmark_creates_pending_record(
+    client: TestClient, db_session: Session
+) -> None:
+    headers, user = auth_headers(client)
+    actions = [{
+        "tool": "save_bookmark",
+        "args": {"url": "https://example.com/read", "note": "稍后阅读"},
+    }]
+    record = pending_record(db_session, user["id"], actions)
+    response = confirm(client, headers, record.id, actions)
+    assert response.status_code == 200
+    assert response.json()["data"]["results"][0]["ref"].startswith("bookmark:")
+    bookmark = db_session.scalar(select(Bookmark).where(Bookmark.user_id == user["id"]))
+    assert bookmark is not None
+    assert bookmark.status == "pending"
+    assert bookmark.note == "稍后阅读"
+
+
 def test_confirm_rejects_invalid_or_unsupported_actions_and_marks_failed(
     client: TestClient, db_session: Session
 ) -> None:
@@ -279,13 +298,13 @@ def test_confirm_rejects_invalid_or_unsupported_actions_and_marks_failed(
     unsupported = pending_record(
         db_session,
         user["id"],
-        [{"tool": "save_bookmark", "args": {"url": "https://example.com"}}],
+        [{"tool": "create_trip", "args": {"destination": "杭州", "days": 2}}],
     )
     unsupported_response = confirm(
         client,
         headers,
         unsupported.id,
-        [{"tool": "save_bookmark", "args": {"url": "https://example.com"}}],
+        [{"tool": "create_trip", "args": {"destination": "杭州", "days": 2}}],
     )
 
     assert invalid_response.status_code == 422
