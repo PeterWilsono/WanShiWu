@@ -21,6 +21,7 @@ const modules = [
   { name: 'pantry', index: '05', icon: 'pantry', title: '食材书房', english: 'PANTRY', description: '照料每一份新鲜，先到期先使用，减少无意浪费。', meta: '库存 · 临期 · 购物', tone: 'sage' },
   { name: 'categories', index: '06', icon: 'settings', title: '分类雅集', english: 'CATEGORIES', description: '按照自己的生活方式，定制收入的来处与支出的去向。', meta: '自定义 · 内置保护', tone: 'clay' },
   { name: 'inbox', index: '07', icon: 'bookmark', title: '阅读收藏室', english: 'LIBRARY', description: '收好值得回看的文字，让链接沉淀为自己的知识手帖。', meta: '收藏 · 摘要 · 每周回顾', tone: 'gold' },
+  { name: 'trip', index: '08', icon: 'transport', title: '远行手帖', english: 'JOURNEYS', description: '把想去的地方写进日程，让预算与每一天都从容有序。', meta: '行程 · 预算 · AI 草稿', tone: 'sage' },
 ]
 </script>
 
@@ -64,7 +65,7 @@ const modules = [
     <section class="modules-section" aria-labelledby="modules-title">
       <header class="section-heading">
         <div><p class="section-kicker">A PLACE FOR EVERYTHING</p><h2 id="modules-title">生活，各有归处</h2></div>
-        <p>七间小小的生活房间，<br />收好每一种日常。</p>
+        <p>八间小小的生活房间，<br />收好每一种日常。</p>
       </header>
       <div class="module-grid">
         <button

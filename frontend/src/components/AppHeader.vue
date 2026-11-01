@@ -18,11 +18,13 @@ const navigation = [
   { name: 'transactions', label: '账目', icon: 'wallet' },
   { name: 'pantry', label: '食材', icon: 'pantry' },
   { name: 'inbox', label: '收藏', icon: 'bookmark' },
+  { name: 'trip', label: '旅行', icon: 'transport' },
 ]
 
 function isActive(name: string): boolean {
   if (name === 'calendar') return ['calendar', 'events'].includes(String(route.name))
   if (name === 'transactions') return ['transactions', 'stats', 'categories'].includes(String(route.name))
+  if (name === 'trip') return ['trip', 'trip-detail'].includes(String(route.name))
   return route.name === name
 }
 
