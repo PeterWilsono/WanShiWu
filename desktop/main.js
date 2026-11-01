@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, session, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
@@ -153,6 +153,11 @@ function createWindow() {
 async function openApplication() {
   const logFile = await startBackend()
   if (!mainWindow) createWindow()
+  // 桌面资源已随软件内置，不需要 PWA；清理旧版缓存但保留 localStorage 登录态。
+  await session.defaultSession.clearStorageData({
+    origin: localOrigin,
+    storages: ['serviceworkers', 'cachestorage'],
+  })
   await mainWindow.loadURL(localOrigin)
   ready = true
   mainWindow.show()
@@ -190,6 +195,8 @@ async function startWithRecovery() {
 }
 
 Menu.setApplicationMenu(null)
+// 应用页面只来自本机回环地址，必须绕过系统/环境代理，否则后端正常也会 ERR_FAILED。
+app.commandLine.appendSwitch('no-proxy-server')
 app.disableHardwareAcceleration()
 app.setName('万事屋')
 const hasSingleInstance = app.requestSingleInstanceLock()
