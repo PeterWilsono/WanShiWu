@@ -1,123 +1,99 @@
 # 万事屋 WanShiWu
 
-> 个人生活效率平台 —— 统一 AI 入口 + 四个可插拔模块：生活管家 · 食材管家 · 收藏箱 · 旅行规划
+> 把待办、食材、收藏和旅行，收进一间安静的小屋。
 
-对万事屋说一句话（如"明天下午三点约了牙医"），系统理解后生成确认卡片，确认后自动记录到对应模块。**AI 提议、人确认** —— 模型只负责理解，写库一律由确定性业务代码完成。
+万事屋是一款本地优先的个人生活管理软件，包含生活管家、食材管家、收藏箱和旅行规划四个模块。既可以直接安装 Windows 桌面版，也保留完整的 Web 开发与自托管能力。
+
+**核心理念：AI 提议，人确认。** AI 负责理解自然语言和生成建议，真正的数据写入由可校验、可追踪的业务代码完成。
+
+<p>
+  <a href="https://github.com/PeterWilsono/WanShiWu/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/PeterWilsono/WanShiWu?display_name=tag"></a>
+  <a href="https://github.com/PeterWilsono/WanShiWu/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/PeterWilsono/WanShiWu/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="./LICENSE"><img alt="许可证 MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+  <img alt="Windows 10/11 64 位" src="https://img.shields.io/badge/Windows-10%2F11%20x64-blue">
+</p>
+
+## 下载与安装
+
+### [下载万事屋 Windows 最新版](https://github.com/PeterWilsono/WanShiWu/releases/latest)
+
+当前版本：**v1.0.2**。安装包约 160 MB，适用于 **Windows 10/11 64 位**。
+
+1. 打开下载页面，在 Assets 中下载 `WanShiWu-Setup.exe`。
+2. 双击安装包，按普通 Windows 软件完成安装。
+3. 双击桌面的“万事屋”图标。
+4. 首次打开选择“创建账号”，注册后即可使用。
+
+不需要安装 Python、Node.js，不需要手动启动后端，也不需要打开命令行窗口。旧版本可以直接覆盖安装，原有业务数据会保留。
+
+> 当前安装包尚未购买商业代码签名证书，Windows 可能提示“未知发布者”。请只从本仓库的 Releases 页面下载，并核对 Release 中公布的 SHA-256。
+
+## 功能
+
+| 模块 | 已实现的常用功能 |
+| --- | --- |
+| 生活管家 | 待办、周期性任务、日程、月历、分类记账、月度统计、站内提醒 |
+| 食材管家 | 库存与保质期、临期优先、购物清单、做菜扣减、AI 菜谱与采购建议 |
+| 收藏箱 | 网页收藏、标签、全文搜索、正文提取、AI 摘要、每周回顾 |
+| 旅行规划 | 每日行程、预算、活动排序、AI 行程草稿、Markdown 导出 |
+| 统一 AI 入口 | 自然语言解析、可编辑确认卡片、确认后写入、历史与取消 |
+| 桌面体验 | 静默启动、本地数据、单实例、48 条万事屋小签、关闭确认 |
+
+## 数据与隐私
+
+- 账号和业务数据默认保存在自己电脑的 SQLite 数据库中，不会自动云同步。
+- Windows 桌面版数据目录：`%LOCALAPPDATA%\WanShiWu\data`。
+- 备份时请先完全退出软件，再复制整个 `data` 文件夹。
+- 待办、记账、库存等普通功能在本地运行。
+- AI、网页正文提取等联网功能需要网络；使用 AI 时，相关内容会发送给您配置的模型服务商。
+- 本项目不附带模型 Key。请在“我的 → 设置 → AI 模型”中配置自己的 MiMo 或 DeepSeek Key。
+
+## v1.0.2 更新
+
+- 新增 48 条原创“万事屋小签”，首页可随机换一句。
+- 新增桌面关闭确认，防止误关软件。
+- 修复系统代理与旧 PWA 缓存导致的再次启动失败。
+- 支持空库存直接推荐菜谱，并将所需食材加入购物清单。
+
+完整安装包校验值和版本说明见 [Releases](https://github.com/PeterWilsono/WanShiWu/releases)。
 
 ## 技术栈
 
-| 端 | 技术 |
-|---|---|
-| 后端 | Python 3.11+ · FastAPI · SQLAlchemy 2.0 · Alembic · SQLite(WAL) · Pydantic v2 |
-| 前端 | Vue 3 · TypeScript · Vite · Element Plus · Pinia · Vue Router |
-| AI | OpenAI 兼容接口（小米 MiMo / DeepSeek），function calling 意图识别 |
-| 工程 | pytest · ruff · GitHub Actions · Docker Compose |
-| 桌面软件 | Electron · PyInstaller · NSIS Windows 安装包 |
+| 部分 | 技术 |
+| --- | --- |
+| 后端 | Python 3.11+、FastAPI、SQLAlchemy 2、Alembic、SQLite、Pydantic v2 |
+| 前端 | Vue 3、TypeScript、Vite、Element Plus、Pinia、Vue Router |
+| 桌面 | Electron、PyInstaller、NSIS |
+| AI | OpenAI 兼容接口、结构化输出、意图识别与确认执行 |
+| 工程 | pytest、Ruff、GitHub Actions、Docker Compose |
 
-## Windows 桌面软件（推荐给普通使用者）
+## 项目结构
 
-当前构建产物：`desktop/release/v1.0.2/万事屋-Windows-1.0.2-安装包.exe`，约 160 MB。支持首页 48 条“万事屋小签”和温暖的关闭确认；旧用户可直接覆盖安装，业务数据保留。
-
-1. 只需把这一个 exe 安装包发给使用 Windows 10/11 64 位系统的朋友。
-2. 双击安装包，按普通软件完成安装，然后双击桌面“万事屋”图标。
-3. 首次打开点击“创建账号”。不需要 Python、Node.js、浏览器地址或命令行窗口。
-4. 普通功能在本机运行；AI 和网页收藏需要网络，AI 还需在“我的 → 设置 → AI 模型”配置自己的 Key。
-
-账号与业务数据默认保存在 `%LOCALAPPDATA%\WanShiWu\data`，不同电脑的数据不会自动同步。备份时先完全退出软件，再复制整个 `data` 目录。当前安装包未购买商业代码签名证书，Windows 可能显示“未知发布者”；正式公开分发前建议增加可信代码签名。
-
-开发者重新构建：先安装后端开发依赖、`desktop/requirements-build.txt` 和 `desktop` 的 npm 依赖，再在项目根目录运行 `desktop\build-windows.bat`。安装包、缓存、测试数据库和构建目录均不提交 Git。
-
-## 快速开始（开发模式）
-
-### Windows 最简单的方式（推荐）
-
-1. 打开项目文件夹 `D:\cursor\wanshiwu-001`。
-2. **双击根目录的 `start-dev.bat`**，不要双击 `frontend/index.html`。
-3. 脚本会检查环境、执行数据库迁移，分别打开后端和前端窗口，然后自动打开浏览器。
-4. 浏览器地址是 **http://127.0.0.1:5173**。首次使用点击“创建账号”。
-5. 使用期间保留 `WanShiWu Backend` 和 `WanShiWu Frontend` 两个窗口；关闭这两个窗口即停止服务。
-
-`backend/.env` 不存在时脚本会从示例自动复制。手动功能无需模型 Key；要使用 AI，登录后点击右上角头像，进入 **“我的 → 设置 → AI 模型”**，分别配置 MiMo 或 DeepSeek 并测试连接，无需手动编辑文件。只想检查环境而不启动服务，可在项目目录运行 `start-dev.bat --check`。
-
-### 手动启动方式
-
-```bash
-# 1. 后端
-cd backend
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -e ".[dev]"
-copy .env.example .env          # 可选：AI 也可登录后在“我的 → 设置”配置
-uvicorn app.main:app --reload   # http://localhost:8000/docs
-
-# 2. 前端
-cd frontend
-npm install
-npm run dev                     # http://localhost:5173
-
-# 3. 测试
-cd backend && pytest
+```text
+backend/             FastAPI、业务模块、数据库迁移与测试
+frontend/            Vue 3 Web 应用
+desktop/             Electron 桌面外壳与 Windows 打包配置
+docs/                项目需求、阶段记录与维护文档
+scripts/             数据库备份等工具
+DEVELOPMENT.md        开发、启动、测试与桌面打包指南
 ```
 
-### Docker Compose（已安装 Docker 时）
+## 开发与文档
 
-```bash
-docker compose up --build
-```
+- [开发指南](DEVELOPMENT.md)：本地启动、测试、Docker、备份和安装包构建
+- [项目需求说明书](docs/PROJECT_SPEC.md)：功能范围、架构、数据库和接口设计
+- [阶段开发记录](docs/stages/README.md)：每个小任务的实现与验证
+- [项目概览](docs/PROJECT_OVERVIEW.md)：能力边界与技术设计摘要
+- [GitHub 维护指南](docs/GITHUB_SETUP.md)：源码与 Release 的后续更新方式
 
-浏览器仍访问 **http://127.0.0.1:5173**。后端启动前自动执行 Alembic 迁移，前端 Nginx 将 `/api` 转发到后端；SQLite 数据保存在 `wanshiwu-data` 命名卷中，删除容器不会直接删除数据。可在项目根目录 `.env` 设置 `JWT_SECRET`、`LLM_API_KEY` 等 Compose 变量；部署到公网前必须更换默认 JWT 密钥。
+当前四个模块的主要流程已经落地，但需求中的部分增强项仍未实现，例如 RAG 知识库、PDF/ICS 导出、地图与路线。真实模型效果、动态网页抓取和不同设备上的体验仍需持续验收。
 
-当前开发机未安装 Docker，因此配置与 YAML 语法已检查，但容器构建和启动尚未本机验收。
+## 反馈与贡献
 
-### 数据库备份
+欢迎通过 [Issues](https://github.com/PeterWilsono/WanShiWu/issues) 提交问题或建议。提交前请不要附上真实账号、数据库、模型 Key 或其他隐私数据。
 
-在项目和现有虚拟环境均已准备好的情况下，从根目录运行：
+## 许可证与作者
 
-```bash
-backend\.venv\Scripts\python.exe scripts\backup_db.py
-```
+本项目采用 [MIT License](LICENSE)。
 
-备份默认写入 `backups/`，使用 SQLite Online Backup API，并通过 `PRAGMA integrity_check` 后才生成正式文件；不会覆盖已有备份。可用 `--source` 和 `--output` 指定源数据库与目标文件。
-
-CI 位于 `.github/workflows/ci.yml`，包含后端 Ruff、pytest 和 80% 覆盖率门槛，以及前端依赖安装与生产构建。
-
-## 项目状态
-
-- [x] 阶段 0 · 项目初始化
-- [x] 阶段 1 · 骨架、登录与自主注册
-- [x] 阶段 2 · 生活管家：待办、日程、分类记账、提醒、月历与月度统计
-- [x] 阶段 3 · 统一 AI 入口：解析、可编辑确认、原子写入、历史与取消
-- [x] 阶段 4 · PWA 基础能力
-- [x] 阶段 5 · 食材管家 P0/P1：库存、临期、购物、做菜扣减与 AI 菜谱
-- [x] 阶段 6 · 收藏箱 P0/P1：标签、全文搜索、安全抓取、AI 摘要与每周回顾
-- [x] 阶段 7 · 旅行规划 P0/P1：每日安排、预算、AI 草稿、重排序与 Markdown 导出
-- [x] 阶段 8 · 一键启动、Docker/Compose、CI、备份脚本与项目文档
-- [x] 阶段 9 · 我的与设置：MiMo / DeepSeek 配置、加密密钥、连接测试与通用偏好
-- [x] 阶段 11 · Windows 桌面软件：内嵌后端、静默启动、本地数据与 NSIS 安装包
-
-当前四个模块的 P0/P1 主要流程均已落地，但不等于说明书全部版本已经完成。RAG 知识库、PDF/ICS 导出、地图与路线等 P2 增强尚未实现；真实模型质量、真实网页抓取、浏览器细节交互和真机 PWA 仍需单独验收。各小阶段的真实验证记录见阶段文档。
-
-首次打开 `http://127.0.0.1:5173` 后，可在登录页切换到“创建账号”，注册成功会自动进入首页。
-
-## 文档
-
-- [项目说明书（唯一权威）](docs/PROJECT_SPEC.md) —— 需求、架构、数据库、接口、AI 层、开发路线
-- [阶段说明文档](docs/stages/README.md) —— 每个小任务的目标、知识点、实现方式与验证结果
-- 开发日志：`docs/devlog.md`（随开发补充）
-- 评测记录：`docs/eval_log.md`（阶段 3 起）
-
-## 设计要点
-
-- **AI 提议、人确认**：parse 只理解不执行，confirm 经 Pydantic 二次校验后由 service 层写库
-- **LLM 只理解不执行 / 数字让代码算**：金额全程整数分，汇总、预算、过期日期均由代码计算
-- **模块化单体**：模块间仅通过 service 层调用，dispatch 表实现可插拔
-- **可观测**：所有 LLM 调用写日志（耗时 / token / 成败），每日限额，评测集量化准确率
-
-## 关联远程仓库
-
-本地开发已完成 `git init`。远程 GitHub 仓库创建后：
-
-```bash
-git remote add origin <你的仓库地址>
-git push -u origin main
-```
+作者：**云程 / [PeterWilsono](https://github.com/PeterWilsono)**。
