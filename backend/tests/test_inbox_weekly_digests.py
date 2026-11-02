@@ -11,6 +11,7 @@ from app.modules.inbox.digest_service import (
     generate_due_weekly_digests,
     generate_weekly_digest,
 )
+from app.modules.inbox.models import Bookmark
 from app.scheduler.reminders import create_scheduler
 
 PASSWORD = "correct-weekly-569"
@@ -33,6 +34,10 @@ def test_weekly_digest_uses_fake_llm_and_user_isolation(client: TestClient, db_s
         json={"url": "https://example.com/weekly", "title": "周读"},
         headers=headers,
     )
+    bookmark = db_session.get(Bookmark, 1)
+    assert bookmark is not None
+    bookmark.created_at = datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
+    db_session.commit()
     user = db_session.get(User, 1)
     llm = FakeLLMClient([LLMResult("## 本周收藏回顾\n\n- 本周关注阅读。", [], 1, 1, 1)])
     digest = generate_weekly_digest(db_session, user, llm, current_time=SUNDAY)

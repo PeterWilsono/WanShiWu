@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import affirmations from '../constants/affirmations.json'
 import AppIcon from '../components/AppIcon.vue'
 import AssistantComposer from '../components/AssistantComposer.vue'
 import { useAuthStore } from '../stores/auth'
@@ -12,6 +13,15 @@ const todayLabel = new Intl.DateTimeFormat('zh-CN', {
   month: 'long', day: 'numeric', weekday: 'long',
 }).format(new Date())
 const firstName = computed(() => authStore.user?.username || '朋友')
+const affirmationIndex = ref(Math.floor(Math.random() * affirmations.length))
+const affirmation = computed(() => affirmations[affirmationIndex.value])
+
+function shuffleAffirmation(): void {
+  if (affirmations.length < 2) return
+  let next = affirmationIndex.value
+  while (next === affirmationIndex.value) next = Math.floor(Math.random() * affirmations.length)
+  affirmationIndex.value = next
+}
 
 const modules = [
   { name: 'todos', index: '01', icon: 'check', title: '待办清单', english: 'TO DO', description: '把脑海里的待办轻轻放下，专注眼前的一件事。', meta: '清单 · 重复 · 标签', tone: 'sage' },
@@ -37,15 +47,19 @@ const modules = [
         </button>
       </div>
 
-      <div class="hero-art" aria-hidden="true">
+      <div class="hero-art">
         <span class="hero-art__orbit orbit-one" /><span class="hero-art__orbit orbit-two" />
         <div class="hero-art__sun">万</div>
         <div class="day-note">
-          <div class="day-note__top"><span>今日手帖</span><small>DAILY NOTES</small></div>
-          <p class="day-note__date">好好生活，<br />慢慢完成。</p>
+          <div class="day-note__top"><span>万事屋小签</span><small>DAILY NOTES</small></div>
+          <p class="day-note__date">{{ affirmation }}</p>
           <div class="day-note__line"><i /><span>给未来留一点时间</span></div>
           <div class="day-note__line"><i /><span>为此刻留一点专注</span></div>
-          <div class="day-note__footer"><span>LESS, BUT BETTER</span><b>∞</b></div>
+          <div class="day-note__footer">
+            <button class="day-note__refresh" aria-label="换一句万事屋小签" @click="shuffleAffirmation">
+              <AppIcon name="sparkle" :size="13" />换一句
+            </button><b>∞</b>
+          </div>
         </div>
         <div class="floating-note floating-note--top"><AppIcon name="check" :size="16" /><span>小事，也有着落</span></div>
         <div class="floating-note floating-note--bottom"><AppIcon name="sparkle" :size="16" /><span>日常，自有秩序</span></div>
@@ -115,12 +129,14 @@ const modules = [
 .day-note__top { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .day-note__top span { font-family: var(--font-display); font-size: 17px; }
 .day-note__top small { color: var(--ink-muted); font-size: 7px; letter-spacing: .2em; }
-.day-note__date { padding: 26px 0; color: var(--ink); font-family: var(--font-display); font-size: clamp(25px, 2.4vw, 34px); line-height: 1.55; letter-spacing: .08em; }
+.day-note__date { min-height: 3.1em; padding: 26px 0; color: var(--ink); font-family: var(--font-display); font-size: clamp(24px, 2.2vw, 31px); line-height: 1.55; letter-spacing: .06em; }
 .day-note__line { display: flex; align-items: center; gap: 10px; margin: 15px 0; color: var(--ink-secondary); font-size: 11px; }
 .day-note__line i { width: 9px; height: 9px; border: 1px solid var(--sage); border-radius: 50%; }
 .day-note__footer { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line-soft); color: var(--ink-muted); }
 .day-note__footer span { font-size: 7px; letter-spacing: .2em; }
 .day-note__footer b { color: var(--vermilion); font-family: var(--font-display); font-size: 24px; font-weight: 400; }
+.day-note__refresh { display: inline-flex; align-items: center; gap: 5px; padding: 5px 0; border: 0; color: var(--ink-muted); background: transparent; cursor: pointer; font-size: 10px; letter-spacing: .08em; }
+.day-note__refresh:hover { color: var(--vermilion); }
 .floating-note { position: absolute; display: flex; align-items: center; gap: 8px; padding: 11px 15px; border: 1px solid var(--line-soft); border-radius: 12px; color: var(--ink-secondary); background: rgb(251 250 246 / 90%); box-shadow: var(--shadow-soft); font-size: 11px; backdrop-filter: blur(8px); animation: float 5s ease-in-out infinite; }
 .floating-note--top { top: 22%; left: 0; }
 .floating-note--bottom { right: 0; bottom: 18%; animation-delay: -2.5s; }

@@ -3,8 +3,10 @@ const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
+const affirmations = require('./affirmations.json')
 
 const SMOKE_TEST = process.argv.includes('--smoke-test')
+const CLOSE_TEST = process.argv.includes('--close-test')
 let mainWindow = null
 let backendProcess = null
 let backendExited = false
@@ -12,6 +14,40 @@ let backendExitCode = null
 let quitting = false
 let ready = false
 let localOrigin = ''
+let closeDialogOpen = false
+let lastAffirmationIndex = -1
+
+function nextAffirmation() {
+  let index = Math.floor(Math.random() * affirmations.length)
+  if (affirmations.length > 1) {
+    while (index === lastAffirmationIndex) index = Math.floor(Math.random() * affirmations.length)
+  }
+  lastAffirmationIndex = index
+  return affirmations[index]
+}
+
+async function confirmClose(targetWindow) {
+  if (closeDialogOpen) return
+  closeDialogOpen = true
+  const affirmation = nextAffirmation()
+  if (CLOSE_TEST) console.log(`WANSHIWU_CLOSE_CONFIRM_SHOWN ${affirmation}`)
+  const { response } = await dialog.showMessageBox(targetWindow, {
+    type: 'question',
+    title: '要暂时合上万事屋吗？',
+    message: affirmation,
+    detail: '您记录的内容会妥善保存在本机。准备好后，我们再继续。',
+    buttons: ['再留一会儿', '安心关闭'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  })
+  closeDialogOpen = false
+  if (CLOSE_TEST) console.log(`WANSHIWU_CLOSE_CONFIRM_RESPONSE ${response}`)
+  if (response === 1) {
+    quitting = true
+    targetWindow.close()
+  }
+}
 
 function backendExecutable() {
   return app.isPackaged
@@ -138,6 +174,11 @@ function createWindow() {
     },
   })
   mainWindow.loadFile(path.join(__dirname, 'loading.html'))
+  mainWindow.on('close', (event) => {
+    if (quitting || SMOKE_TEST) return
+    event.preventDefault()
+    void confirmClose(mainWindow)
+  })
   mainWindow.on('closed', () => { mainWindow = null })
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url)
@@ -152,6 +193,7 @@ function createWindow() {
 
 async function openApplication() {
   const logFile = await startBackend()
+  if (quitting) return logFile
   if (!mainWindow) createWindow()
   // 桌面资源已随软件内置，不需要 PWA；清理旧版缓存但保留 localStorage 登录态。
   await session.defaultSession.clearStorageData({
@@ -165,6 +207,10 @@ async function openApplication() {
     console.log(`WANSHIWU_DESKTOP_SMOKE_OK ${localOrigin}`)
     setTimeout(() => app.quit(), 300)
   }
+  if (CLOSE_TEST) {
+    console.log('WANSHIWU_CLOSE_CONFIRM_READY')
+    setTimeout(() => mainWindow?.close(), 300)
+  }
   return logFile
 }
 
@@ -172,6 +218,7 @@ async function startWithRecovery() {
   try {
     await openApplication()
   } catch (error) {
+    if (quitting) return
     stopBackend()
     const detail = error instanceof Error ? error.message : String(error)
     if (SMOKE_TEST) {
