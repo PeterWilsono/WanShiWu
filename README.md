@@ -17,7 +17,7 @@
 
 ### [下载万事屋 Windows 最新版](https://github.com/PeterWilsono/WanShiWu/releases/latest)
 
-当前版本：**v1.0.2**。安装包约 160 MB，适用于 **Windows 10/11 64 位**。
+当前版本：**v1.0.3**。安装包约 160 MB，适用于 **Windows 10/11 64 位**。
 
 1. 打开下载页面，在 Assets 中下载 `WanShiWu-Setup.exe`。
 2. 双击安装包，按普通 Windows 软件完成安装。
