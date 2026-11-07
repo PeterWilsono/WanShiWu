@@ -13,6 +13,7 @@ import {
 } from '../api/settings'
 import AppIcon from '../components/AppIcon.vue'
 import { useAuthStore } from '../stores/auth'
+import type { DesktopDataLocation } from '../types/desktop'
 import type { AppSettings, GeneralSettings, LLMProvider } from '../types/settings'
 
 interface ProviderForm {
@@ -22,6 +23,8 @@ interface ProviderForm {
   is_active: boolean
 }
 
+type SettingsTab = 'ai' | 'general' | 'storage'
+
 const route = useRoute()
 const authStore = useAuthStore()
 const loading = ref(false)
@@ -30,10 +33,21 @@ const saving = ref(false)
 const testing = ref(false)
 const savingGeneral = ref(false)
 const settings = ref<AppSettings | null>(null)
-const activeTab = ref<'ai' | 'general'>(route.query.tab === 'general' ? 'general' : 'ai')
+const desktopBridge = window.wanshiwuDesktop
+const isDesktop = Boolean(desktopBridge)
+const initialTab = route.query.tab
+const requestedTab: SettingsTab =
+  initialTab === 'general' ? 'general' : initialTab === 'storage' ? 'storage' : 'ai'
+// 浏览器里没有桌面壳，数据位置由服务器决定，不能提供切换入口。
+const activeTab = ref<SettingsTab>(requestedTab === 'storage' && !isDesktop ? 'ai' : requestedTab)
 const selectedProvider = ref<LLMProvider>('mimo')
 const localTestMessage = ref('')
 const localTestSuccess = ref(false)
+const dataLocation = ref<DesktopDataLocation | null>(null)
+const locationLoading = ref(false)
+const locationError = ref('')
+const switchingLocation = ref(false)
+const migrating = ref(false)
 const forms = reactive<Record<LLMProvider, ProviderForm>>({
   mimo: { api_key: '', base_url: '', model: '', is_active: false },
   deepseek: { api_key: '', base_url: '', model: '', is_active: false },
@@ -181,7 +195,87 @@ function formatTime(value: string | null): string {
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-onMounted(loadSettings)
+const sourceLabel = computed(() => {
+  switch (dataLocation.value?.source) {
+    case 'custom':
+      return '自定义位置'
+    case 'install':
+      return '安装目录内'
+    case 'fallback':
+      return '系统本地目录'
+    case 'pointer-unusable':
+      return '临时回退'
+    case 'env':
+      return '启动参数指定'
+    default:
+      return '读取中'
+  }
+})
+
+const onSystemDrive = computed(() => {
+  const info = dataLocation.value
+  if (!info) return false
+  const match = /^([a-z]):/i.exec(info.dataDir)
+  if (!match) return false
+  return `${match[1].toUpperCase()}:` === (info.systemDrive || 'C:').toUpperCase()
+})
+
+function driveName(): string {
+  const match = /^([a-z]):/i.exec(dataLocation.value?.dataDir ?? '')
+  return match ? `${match[1].toUpperCase()} 盘` : '当前磁盘'
+}
+
+async function loadDataLocation(): Promise<void> {
+  if (!desktopBridge) return
+  locationLoading.value = true
+  locationError.value = ''
+  try {
+    dataLocation.value = await desktopBridge.getDataLocation()
+  } catch {
+    locationError.value = '读取数据位置失败，请重启软件后再试'
+  } finally {
+    locationLoading.value = false
+  }
+}
+
+async function openFolder(kind: 'current' | 'legacy'): Promise<void> {
+  if (!desktopBridge) return
+  const result = kind === 'current'
+    ? await desktopBridge.openDataFolder()
+    : await desktopBridge.openLegacyFolder()
+  if (!result.ok) ElMessage.error(result.message ? `无法打开文件夹：${result.message}` : '无法打开文件夹')
+}
+
+async function chooseFolder(): Promise<void> {
+  if (!desktopBridge || switchingLocation.value) return
+  try {
+    await ElMessageBox.confirm(
+      '可以把数据搬到 D 盘等任意位置。迁移会先完整复制并校验，然后自动重启软件；旧位置会保留一份备份，确认新位置正常后可自行删除。',
+      '更换数据保存位置',
+      { confirmButtonText: '选择新位置', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  switchingLocation.value = true
+  try {
+    const result = await desktopBridge.chooseDataLocation()
+    if (result.restarting) {
+      migrating.value = true
+      return
+    }
+    if (!result.ok && !result.canceled) ElMessage.error(result.message || '更换保存位置失败')
+  } catch {
+    ElMessage.error('更换保存位置失败，请稍后重试')
+  } finally {
+    switchingLocation.value = false
+  }
+}
+
+onMounted(() => {
+  void loadSettings()
+  if (isDesktop) void loadDataLocation()
+})
 </script>
 
 <template>
@@ -206,6 +300,9 @@ onMounted(loadSettings)
         </button>
         <button :class="{ active: activeTab === 'general' }" @click="activeTab = 'general'">
           <AppIcon name="settings" :size="19" /><span><strong>通用偏好</strong><small>时区、提醒与限额</small></span>
+        </button>
+        <button v-if="isDesktop" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'">
+          <AppIcon name="folder" :size="19" /><span><strong>数据存储</strong><small>保存位置与迁移</small></span>
         </button>
         <button @click="$router.push({ name: 'categories' })">
           <AppIcon name="wallet" :size="19" /><span><strong>分类管理</strong><small>收入与支出分类</small></span>
@@ -289,7 +386,7 @@ onMounted(loadSettings)
         />
       </section>
 
-      <section v-else class="settings-content">
+      <section v-else-if="activeTab === 'general'" class="settings-content">
         <div class="content-heading"><div><p class="page-eyebrow">DAILY PREFERENCES</p><h2>通用偏好</h2></div></div>
         <p class="content-intro">这些选项会作用于对应业务，不需要重启服务。</p>
         <form class="general-form" @submit.prevent="saveGeneral">
@@ -316,6 +413,76 @@ onMounted(loadSettings)
           <el-button type="primary" native-type="submit" :loading="savingGeneral">保存通用设置</el-button>
         </form>
       </section>
+
+      <section v-else class="settings-content">
+        <div class="content-heading">
+          <div><p class="page-eyebrow">LOCAL DATA</p><h2>数据存储</h2></div>
+          <span class="active-summary" :class="{ inactive: !dataLocation }">{{ sourceLabel }}</span>
+        </div>
+        <p class="content-intro">所有记录只保存在这台电脑，不会自动云同步。备份时请先完全退出软件，再复制整个数据文件夹。</p>
+
+        <el-alert v-if="locationError" :title="locationError" type="error" show-icon :closable="false">
+          <el-button size="small" @click="loadDataLocation">重新读取</el-button>
+        </el-alert>
+
+        <div v-loading="locationLoading" class="storage-card">
+          <p class="storage-label">当前保存位置</p>
+          <code class="storage-path">{{ dataLocation?.dataDir || '读取中…' }}</code>
+          <p class="field-help">{{ dataLocation?.reason || '这里显示软件实际读写数据库的文件夹。' }}</p>
+          <div class="storage-actions">
+            <el-button :disabled="!dataLocation" @click="openFolder('current')">打开文件夹</el-button>
+            <el-button
+              type="primary"
+              :loading="switchingLocation"
+              :disabled="!dataLocation || migrating"
+              @click="chooseFolder"
+            >
+              更换保存位置
+            </el-button>
+          </div>
+        </div>
+
+        <el-alert
+          v-if="onSystemDrive"
+          class="storage-alert"
+          type="warning"
+          show-icon
+          :closable="false"
+          title="数据目前放在系统盘（C 盘）"
+          description="可以换到 D 盘等非系统盘，减少 C 盘占用。点击“更换保存位置”选择目标文件夹，软件会自动复制、校验并重启。"
+        />
+
+        <div class="storage-facts">
+          <div><span>保存规则</span><strong>{{ sourceLabel }}</strong></div>
+          <div><span>所在磁盘</span><strong>{{ driveName() }}</strong></div>
+          <div><span>运行日志</span><strong class="storage-fact-path">{{ dataLocation?.logFile || '—' }}</strong></div>
+          <div><span>位置记录</span><strong class="storage-fact-path">{{ dataLocation?.pointerFile || '—' }}</strong></div>
+        </div>
+
+        <div v-if="dataLocation?.legacyHasData" class="storage-note">
+          <p><strong>旧位置还留有一份数据副本</strong></p>
+          <code class="storage-path">{{ dataLocation?.legacyDir }}</code>
+          <p class="field-help">确认新位置数据完整后，可以手动删除这个文件夹，释放系统盘空间。</p>
+          <el-button size="small" @click="openFolder('legacy')">打开旧位置</el-button>
+        </div>
+
+        <el-alert
+          class="storage-alert"
+          type="info"
+          show-icon
+          :closable="false"
+          title="关于备份和迁移"
+          description="数据文件夹里主要是 wanshiwu.db（数据库）和 jwt-secret.txt（本机登录凭据）。迁移会先复制再校验大小，失败时不会删除原数据。"
+        />
+      </section>
+    </div>
+
+    <div v-if="migrating" class="migrating-overlay" role="status" aria-live="polite">
+      <div class="migrating-card">
+        <p class="page-eyebrow">MOVING DATA</p>
+        <h2>正在迁移数据</h2>
+        <p>数据复制并校验完成后，软件会自动重启。请不要强制关闭窗口。</p>
+      </div>
     </div>
   </main>
 </template>
@@ -364,6 +531,25 @@ onMounted(loadSettings)
 .settings-note { margin-top: 18px; background: color-mix(in srgb, var(--paper-light) 70%, transparent); }
 .general-form { max-width: 580px; }
 .general-form :deep(.el-select), .general-form :deep(.el-input-number) { width: 100%; }
+.storage-card { padding: 24px; border: 1px solid var(--line-soft); border-radius: 3px 18px 3px 3px; background: var(--paper-light); }
+.storage-label { margin: 0 0 9px; color: var(--ink-muted); font-size: 11px; letter-spacing: .08em; }
+.storage-path { display: block; padding: 10px 12px; border: 1px dashed var(--line-soft); border-radius: 3px 9px 3px 3px; color: var(--ink); background: var(--paper-deep); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px; line-height: 1.6; word-break: break-all; }
+.storage-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.storage-actions .el-button + .el-button { margin-left: 0; }
+.storage-alert { margin-top: 16px; }
+.storage-facts { margin-top: 18px; overflow: hidden; border: 1px solid var(--line-soft); border-radius: 3px 14px 3px 3px; background: var(--paper-light); }
+.storage-facts > div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+.storage-facts > div:last-child { border-bottom: none; }
+.storage-facts span { color: var(--ink-muted); }
+.storage-facts strong { color: var(--ink); font-weight: 500; word-break: break-all; }
+.storage-fact-path { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; }
+.storage-note { margin-top: 16px; padding: 18px; border: 1px solid var(--line-soft); border-radius: 3px 14px 3px 3px; background: var(--paper-light); }
+.storage-note p { margin: 0 0 9px; color: var(--ink-secondary); font-size: 12.5px; line-height: 1.6; }
+.storage-note .storage-path { margin-bottom: 9px; }
+.migrating-overlay { position: fixed; inset: 0; z-index: 3000; display: grid; padding: 24px; place-items: center; background: color-mix(in srgb, var(--paper) 82%, transparent); backdrop-filter: blur(3px); }
+.migrating-card { max-width: 430px; padding: 30px 28px; border: 1px solid var(--line-soft); border-radius: 3px 18px 3px 3px; background: var(--paper-light); box-shadow: var(--shadow-soft); }
+.migrating-card h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 24px; }
+.migrating-card p:last-child { margin: 0; color: var(--ink-muted); font-size: 13px; line-height: 1.7; }
 @media (max-width: 800px) {
   .settings-page { padding: 36px 20px 60px; }
   .settings-layout { grid-template-columns: 1fr; gap: 24px; }

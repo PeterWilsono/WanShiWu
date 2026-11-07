@@ -42,6 +42,8 @@ from app.modules.pantry.service import (
     list_ingredients,
     list_shopping_items,
     resolve_expiring_days,
+    restore_ingredient,
+    restore_shopping_item,
     update_ingredient,
     update_shopping_item,
 )
@@ -133,6 +135,14 @@ def update_ingredient_endpoint(
     return ok(serialize_ingredient(ingredient), "更新成功")
 
 
+@router.post("/ingredients/{ingredient_id}/restore")
+def restore_ingredient_endpoint(
+    ingredient_id: int, db: DbSession, current_user: CurrentUser
+) -> dict:
+    ingredient = restore_ingredient(db, current_user.id, ingredient_id)
+    return ok(serialize_ingredient(ingredient), "恢复成功")
+
+
 @router.delete("/ingredients/{ingredient_id}")
 def delete_ingredient_endpoint(
     ingredient_id: int, db: DbSession, current_user: CurrentUser
@@ -185,6 +195,12 @@ def update_shopping_item_endpoint(
 ) -> dict:
     item = update_shopping_item(db, current_user.id, item_id, data)
     return ok(serialize_shopping_item(item), "更新成功")
+
+
+@router.post("/shopping-items/{item_id}/restore")
+def restore_shopping_item_endpoint(item_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    item = restore_shopping_item(db, current_user.id, item_id)
+    return ok(serialize_shopping_item(item), "恢复成功")
 
 
 @router.delete("/shopping-items/{item_id}")

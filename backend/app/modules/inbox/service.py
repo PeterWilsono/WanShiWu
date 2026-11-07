@@ -174,6 +174,23 @@ def delete_bookmark(db: Session, user_id: int, bookmark_id: int) -> None:
     db.commit()
 
 
+def restore_bookmark(db: Session, user_id: int, bookmark_id: int) -> Bookmark:
+    bookmark = db.scalar(
+        select(Bookmark).where(
+            Bookmark.id == bookmark_id,
+            Bookmark.user_id == user_id,
+            Bookmark.deleted_at.is_not(None),
+        )
+    )
+    if bookmark is None:
+        raise AppError(ErrorCode.NOT_FOUND, "已删除的收藏不存在", 404)
+    bookmark.deleted_at = None
+    upsert_bookmark_fts(db, bookmark)
+    db.commit()
+    db.refresh(bookmark)
+    return bookmark
+
+
 def list_bookmarks(
     db: Session,
     user_id: int,

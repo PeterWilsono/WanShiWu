@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.assistant.router import router as assistant_router
 from app.core.config import settings
@@ -49,6 +50,13 @@ app = FastAPI(
 # 先注册异常处理器再加中间件：中间件在更外层，能记录到异常转换后的真实状态码
 register_exception_handlers(app)
 app.add_middleware(RequestLogMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(inbox_router, prefix="/api/v1")
 app.include_router(life_router, prefix="/api/v1")

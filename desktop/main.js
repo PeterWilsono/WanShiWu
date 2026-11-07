@@ -1,9 +1,17 @@
-const { app, BrowserWindow, Menu, dialog, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
 const affirmations = require('./affirmations.json')
+const {
+  ensureDataDirectory,
+  hasDatabase,
+  moveDataTo,
+  resolveDataLocation,
+  systemLocalRoot,
+  writePointer,
+} = require('./data-location')
 
 const SMOKE_TEST = process.argv.includes('--smoke-test')
 const CLOSE_TEST = process.argv.includes('--close-test')
@@ -12,10 +20,13 @@ let backendProcess = null
 let backendExited = false
 let backendExitCode = null
 let quitting = false
+let restarting = false
 let ready = false
 let localOrigin = ''
 let closeDialogOpen = false
 let lastAffirmationIndex = -1
+let dataLocation = null
+let logDirectory = ''
 
 function nextAffirmation() {
   let index = Math.floor(Math.random() * affirmations.length)
@@ -55,8 +66,38 @@ function backendExecutable() {
     : path.join(__dirname, 'dist', 'backend', 'wanshiwu-backend', 'wanshiwu-backend.exe')
 }
 
+function applicationDirectory() {
+  // 打包后 resources 的上级就是安装目录；开发时就是 desktop 目录。
+  return app.isPackaged ? path.dirname(process.resourcesPath) : __dirname
+}
+
+/**
+ * 启动前确定数据目录：设置过的位置 → 安装目录 data → 系统本地目录。
+ * 若新位置还没有数据库而旧位置有，则先复制过来，避免换位置后看起来数据丢失。
+ */
+function bootstrapDataLocation() {
+  const base = resolveDataLocation({ appDir: applicationDirectory() })
+  const legacyDir = base.source === 'env' ? null : path.join(systemLocalRoot(), 'data')
+  const ensured = ensureDataDirectory(base.dataDir, { legacyDir })
+  dataLocation = {
+    ...base,
+    dataDir: ensured.dataDir,
+    migrated: ensured.migrated === true,
+    migrationError: ensured.error || null,
+    usingLegacy: ensured.fallback === true,
+  }
+  logDirectory = path.join(dataLocation.dataDir, 'logs')
+  if (dataLocation.migrated) {
+    console.log(`WANSHIWU_DATA_MIGRATED ${legacyDir} -> ${dataLocation.dataDir}`)
+  }
+  if (dataLocation.migrationError) {
+    console.error(`WANSHIWU_DATA_MIGRATION_FAILED ${dataLocation.migrationError}`)
+  }
+  return dataLocation
+}
+
 function prepareLog() {
-  const directory = process.env.WANSHIWU_LOG_DIR || path.join(app.getPath('userData'), 'logs')
+  const directory = process.env.WANSHIWU_LOG_DIR || logDirectory || path.join(app.getPath('userData'), 'logs')
   fs.mkdirSync(directory, { recursive: true })
   const file = path.join(directory, 'backend.log')
   const previous = path.join(directory, 'backend.previous.log')
@@ -104,6 +145,115 @@ function stopBackend() {
   }
 }
 
+function stopBackendAndWait(timeoutMs = 8000) {
+  return new Promise((resolve) => {
+    if (!backendProcess || backendExited) {
+      resolve()
+      return
+    }
+    const timer = setTimeout(resolve, timeoutMs)
+    backendProcess.once('exit', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+    stopBackend()
+  })
+}
+
+function dataLocationSummary() {
+  const legacyDir = path.join(systemLocalRoot(), 'data')
+  return {
+    dataDir: dataLocation.dataDir,
+    installDir: dataLocation.installDir,
+    fallbackDir: dataLocation.fallbackDir,
+    defaultDir: dataLocation.installDir,
+    source: dataLocation.source,
+    reason: dataLocation.reason,
+    pointerFile: dataLocation.pointerFile,
+    logFile: path.join(logDirectory, 'backend.log'),
+    legacyDir,
+    legacyHasData: legacyDir !== dataLocation.dataDir && hasDatabase(legacyDir),
+    migrated: dataLocation.migrated,
+    migrationError: dataLocation.migrationError,
+    usingLegacy: dataLocation.usingLegacy,
+    systemDrive: process.env.SystemDrive || 'C:',
+    platform: process.platform,
+    version: app.getVersion(),
+  }
+}
+
+async function restartLater() {
+  restarting = true
+  setTimeout(() => {
+    app.relaunch()
+    app.exit(0)
+  }, 700)
+}
+
+function registerIpc() {
+  ipcMain.handle('wanshiwu:data-location', () => dataLocationSummary())
+
+  ipcMain.handle('wanshiwu:open-data-folder', async () => {
+    const error = await shell.openPath(dataLocation.dataDir)
+    return { ok: !error, message: error || '' }
+  })
+
+  ipcMain.handle('wanshiwu:choose-data-location', async (event) => {
+    const targetWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow
+    const picked = await dialog.showOpenDialog(targetWindow, {
+      title: '选择万事屋数据保存位置',
+      buttonLabel: '使用这个文件夹',
+      defaultPath: dataLocation.dataDir,
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    if (picked.canceled || !picked.filePaths[0]) return { ok: false, canceled: true }
+
+    const target = path.resolve(picked.filePaths[0])
+    const current = path.resolve(dataLocation.dataDir)
+    if (target === current) return { ok: false, message: '这就是当前使用的文件夹' }
+    if (target.startsWith(`${current}${path.sep}`)) {
+      return { ok: false, message: '不能在当前数据文件夹内部再建一层' }
+    }
+
+    const targetHasData = hasDatabase(target)
+
+    const { response } = await dialog.showMessageBox(targetWindow, {
+      type: 'question',
+      title: '更换数据保存位置',
+      message: targetHasData ? '这个文件夹里已经有万事屋数据' : '要把数据搬到这个文件夹吗？',
+      detail: targetHasData
+        ? `位置：${target}\n\n切换后会直接使用这里的现有数据，当前数据仍原样保留在原位置。软件需要重启。`
+        : `新位置：${target}\n\n当前数据会完整复制过去并校验大小，之后以新位置为准。软件会自动重启。`,
+      buttons: targetHasData ? ['使用这里的已有数据', '取消'] : ['开始迁移并重启', '取消'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    if (response !== 0) return { ok: false, canceled: true }
+
+    if (!targetHasData) {
+      await stopBackendAndWait()
+      const result = moveDataTo(target, { sourceDir: current })
+      if (!result.ok) return { ok: false, message: result.message }
+    }
+
+    try {
+      writePointer(dataLocation.pointerFile, target)
+    } catch (error) {
+      return { ok: false, message: `无法保存新位置设置：${error.message}` }
+    }
+
+    await restartLater()
+    return { ok: true, restarting: true, dataDir: target }
+  })
+
+  ipcMain.handle('wanshiwu:open-legacy-folder', async () => {
+    const legacy = path.join(systemLocalRoot(), 'data')
+    const error = await shell.openPath(legacy)
+    return { ok: !error, message: error || '' }
+  })
+}
+
 async function waitUntilHealthy() {
   const deadline = Date.now() + 60_000
   while (Date.now() < deadline) {
@@ -134,7 +284,12 @@ async function startBackend() {
   backendExitCode = null
   const log = prepareLog()
   backendProcess = spawn(executable, [], {
-    env: { ...process.env, WANSHIWU_PORT: String(port) },
+    env: {
+      ...process.env,
+      WANSHIWU_PORT: String(port),
+      WANSHIWU_DATA_DIR: dataLocation.dataDir,
+      WANSHIWU_LOG_DIR: logDirectory,
+    },
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -147,7 +302,7 @@ async function startBackend() {
   backendProcess.once('exit', (code) => {
     backendExited = true
     backendExitCode = code
-    if (!quitting && ready) {
+    if (!quitting && !restarting && ready) {
       dialog.showErrorBox('万事屋本地服务已停止', `请重新打开软件。\n运行日志：${log.file}`)
       app.quit()
     }
@@ -171,6 +326,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   })
   mainWindow.loadFile(path.join(__dirname, 'loading.html'))
@@ -216,6 +372,13 @@ async function openApplication() {
 
 async function startWithRecovery() {
   try {
+    if (!dataLocation) {
+      bootstrapDataLocation()
+      registerIpc()
+    }
+    if (SMOKE_TEST) {
+      console.log(`WANSHIWU_DESKTOP_DATA_DIR ${dataLocation.dataDir} (${dataLocation.source})`)
+    }
     await openApplication()
   } catch (error) {
     if (quitting) return
@@ -226,12 +389,12 @@ async function startWithRecovery() {
       app.exit(1)
       return
     }
-    const logDirectory = process.env.WANSHIWU_LOG_DIR || path.join(app.getPath('userData'), 'logs')
+    const logFile = path.join(logDirectory || path.join(app.getPath('userData'), 'logs'), 'backend.log')
     const { response } = await dialog.showMessageBox({
       type: 'error',
       title: '万事屋暂时未能启动',
       message: '万事屋暂时未能启动',
-      detail: `${detail}\n\n可以点击“重试”。若仍失败，请把日志发给软件提供者：\n${path.join(logDirectory, 'backend.log')}`,
+      detail: `${detail}\n\n可以点击“重试”。若仍失败，请把日志发给软件提供者：\n${logFile}`,
       buttons: ['重试', '退出'],
       defaultId: 0,
       cancelId: 1,
@@ -246,6 +409,13 @@ Menu.setApplicationMenu(null)
 app.commandLine.appendSwitch('no-proxy-server')
 app.disableHardwareAcceleration()
 app.setName('万事屋')
+// 仅用于自动化验收：打印解析结果后立即退出，不启动本地服务。
+if (process.argv.includes('--probe-data-location')) {
+  bootstrapDataLocation()
+  console.log(`WANSHIWU_DATA_LOCATION ${JSON.stringify(dataLocationSummary())}`)
+  app.exit(0)
+  return
+}
 const hasSingleInstance = app.requestSingleInstanceLock()
 if (!hasSingleInstance) {
   app.quit()

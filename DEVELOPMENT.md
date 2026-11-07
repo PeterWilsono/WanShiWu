@@ -90,7 +90,17 @@ docker compose up --build
 
 安装包、缓存、测试数据库和构建目录均不提交 Git。Windows 安装包约 160 MB，应上传到 GitHub Release，不要放入源码历史。
 
-桌面版账号与业务数据默认保存在 `%LOCALAPPDATA%\WanShiWu\data`。备份时先完全退出软件，再复制整个 `data` 目录。普通功能在本机运行；AI 和网页收藏需要网络，AI 还需用户配置自己的 Key。
+桌面版账号与业务数据默认保存在软件安装目录下的 `data` 文件夹；安装目录不可写或位于临时目录时回退到 `%LOCALAPPDATA%\WanShiWu\data`。数据位置由 `desktop/data-location.js` 解析，优先级为 `WANSHIWU_DATA_DIR` 环境变量 → 用户设置（`%LOCALAPPDATA%\WanShiWu\data-location.json`）→ 安装目录 `data` → 系统本地目录。
+
+首次启动若新位置为空、旧位置仍有数据库，会自动复制并校验；迁移失败时继续使用旧位置，避免出现空数据库。软件内“我的 → 设置 → 数据存储”可查看真实路径并迁移到其他磁盘，改动后会自动重启。备份时先完全退出软件，再复制整个 `data` 目录。
+
+普通功能在本机运行；AI 和网页收藏需要网络，AI 还需用户配置自己的 Key。
+
+数据位置模块的单元测试：
+
+```bash
+npm --prefix desktop test
+```
 
 ## 数据库备份
 

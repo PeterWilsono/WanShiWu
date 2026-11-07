@@ -7,6 +7,8 @@ directories:
   buildResources: build
 files:
   - main.js
+  - preload.js
+  - data-location.js
   - affirmations.json
   - loading.html
   - package.json

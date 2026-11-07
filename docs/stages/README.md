@@ -74,5 +74,7 @@
 | [阶段 11.2](11-2-desktop-restart-proxy-cache.md) | 修复代理与旧 PWA 缓存导致的二次启动失败，1.0.1 覆盖升级验证 | 已完成 |
 | [阶段 11.3](11-3-affirmations-close-cleanup.md) | 48 条首页小签、关闭确认、项目瘦身与 GitHub 上传检查 | 已完成（4 个旧构建目录待手动清理） |
 | [阶段 12.1](12-1-github-public-release.md) | 用户首页、开发文档拆分、公开仓库、CI 验收与安装包 Release | 已完成 |
+| [阶段 13.1](13-1-project-architecture-guide.md) | 全栈源码审查、通俗架构教程与专业 Word 成品 | 已完成 |
+| [阶段 19](19-desktop-data-location.md) | 桌面版数据默认跟随安装目录、首次启动自动迁移、软件内更换保存位置 | 实现、10 项模块测试、真实窗口验收与 1.0.3 安装包完成 |
 
 后续每完成一个小任务，都会新增对应说明并更新此索引。

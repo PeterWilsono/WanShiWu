@@ -7,16 +7,18 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.trip.models import Trip, TripItem
+from app.modules.trip.models import Trip, TripItem, TripItemCategory
 from app.modules.trip.schemas import (
     DaySummary,
     ReorderRequest,
+    TripCategorySummary,
     TripCreate,
     TripItemCreate,
     TripItemResponse,
     TripItemUpdate,
     TripListResponse,
     TripResponse,
+    TripSpendRequest,
     TripUpdate,
 )
 
@@ -65,6 +67,18 @@ def trip_response(db: Session, user_id: int, trip: Trip) -> TripResponse:
             )
         )
     planned = sum(item.cost_cents for item in items)
+    actual = sum(item.actual_cost_cents or 0 for item in items)
+    category_summaries = [
+        TripCategorySummary(
+            category=category,
+            planned_cents=sum(item.cost_cents for item in items if item.category == category),
+            actual_cents=sum(
+                item.actual_cost_cents or 0 for item in items if item.category == category
+            ),
+        )
+        for category in TripItemCategory
+        if any(item.category == category for item in items)
+    ]
     remaining = trip.budget_cents - planned if trip.budget_cents is not None else None
     return TripResponse(
         id=trip.id,
@@ -72,6 +86,7 @@ def trip_response(db: Session, user_id: int, trip: Trip) -> TripResponse:
         destination=trip.destination,
         start_date=trip.start_date,
         days=trip.days,
+        travelers=trip.travelers,
         budget_cents=trip.budget_cents,
         preferences=trip.preferences,
         generated_by=trip.generated_by,
@@ -79,6 +94,8 @@ def trip_response(db: Session, user_id: int, trip: Trip) -> TripResponse:
         items=item_responses,
         daily_summaries=daily,
         planned_cents=planned,
+        actual_cents=actual,
+        category_summaries=category_summaries,
         budget_remaining_cents=remaining,
         over_budget=remaining is not None and remaining < 0,
         created_at=trip.created_at,
@@ -166,6 +183,33 @@ def delete_trip(db: Session, user_id: int, trip_id: int) -> None:
     db.commit()
 
 
+def restore_trip(db: Session, user_id: int, trip_id: int) -> Trip:
+    """恢复整趟旅行及随它一起删除的条目，不恢复此前单独删除的条目。"""
+    trip = db.scalar(
+        select(Trip).where(
+            Trip.id == trip_id,
+            Trip.user_id == user_id,
+            Trip.deleted_at.is_not(None),
+        )
+    )
+    if trip is None:
+        raise AppError(ErrorCode.NOT_FOUND, "已删除的行程不存在", 404)
+    deleted_at = trip.deleted_at
+    trip.deleted_at = None
+    items = db.scalars(
+        select(TripItem).where(
+            TripItem.trip_id == trip.id,
+            TripItem.user_id == user_id,
+            TripItem.deleted_at == deleted_at,
+        )
+    ).all()
+    for item in items:
+        item.deleted_at = None
+    db.commit()
+    db.refresh(trip)
+    return trip
+
+
 def get_trip_item(db: Session, user_id: int, trip_id: int, item_id: int) -> TripItem:
     get_trip(db, user_id, trip_id)
     item = db.scalar(
@@ -231,6 +275,76 @@ def delete_trip_item(db: Session, user_id: int, trip_id: int, item_id: int) -> N
     db.commit()
 
 
+def restore_trip_item(db: Session, user_id: int, trip_id: int, item_id: int) -> TripItem:
+    get_trip(db, user_id, trip_id)
+    item = db.scalar(
+        select(TripItem).where(
+            TripItem.id == item_id,
+            TripItem.trip_id == trip_id,
+            TripItem.user_id == user_id,
+            TripItem.deleted_at.is_not(None),
+        )
+    )
+    if item is None:
+        raise AppError(ErrorCode.NOT_FOUND, "已删除的行程条目不存在", 404)
+    item.deleted_at = None
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def mark_trip_item_spent(
+    db: Session, user_id: int, trip_id: int, item_id: int, data: TripSpendRequest
+) -> TripItem:
+    """用户明确确认后生成一笔旅行支出；条目与账目在同一事务中落库。"""
+    # 跨模块只调用 life 的 service/schema，不直接写 life 的表。
+    from app.modules.life.models import TransactionSource, TransactionType
+    from app.modules.life.schemas import TransactionCreate
+    from app.modules.life.service import (
+        create_transaction,
+        initialize_default_categories,
+        list_categories,
+    )
+
+    item = get_trip_item(db, user_id, trip_id, item_id)
+    if item.ledger_transaction_id is not None:
+        raise AppError(ErrorCode.CONFLICT, "这条行程已经记过实际花销", 409)
+    trip = get_trip(db, user_id, trip_id)
+    initialize_default_categories(db, user_id)
+    category_name = {
+        TripItemCategory.TRANSPORT: "交通",
+        TripItemCategory.FOOD: "餐饮",
+        TripItemCategory.ACTIVITY: "娱乐",
+    }.get(item.category, "其他")
+    categories = list_categories(db, user_id, TransactionType.EXPENSE)
+    category = next((entry for entry in categories if entry.name == category_name), None)
+    if category is None:
+        db.rollback()
+        raise AppError(ErrorCode.BUSINESS_RULE_VIOLATION, "找不到对应的支出分类", 422)
+    try:
+        transaction = create_transaction(
+            db,
+            user_id,
+            TransactionCreate(
+                amount_cents=data.amount_cents,
+                type=TransactionType.EXPENSE,
+                category_id=category.id,
+                note=f"旅行 · {trip.title} · {item.place}"[:200],
+                occurred_at=data.occurred_at,
+                source=TransactionSource.TRIP,
+            ),
+            commit=False,
+        )
+        item.actual_cost_cents = data.amount_cents
+        item.ledger_transaction_id = transaction.id
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(item)
+    return item
+
+
 def reorder_trip_items(
     db: Session, user_id: int, trip_id: int, data: ReorderRequest
 ) -> list[TripItem]:
@@ -269,14 +383,30 @@ def export_trip_markdown(db: Session, user_id: int, trip_id: int) -> str:
         f"- 目的地：{detail.destination}",
         f"- 开始日期：{detail.start_date or '待定'}",
         f"- 天数：{detail.days} 天",
+        f"- 同行人数：{detail.travelers} 人",
         "- 总预算："
         + (_yuan(detail.budget_cents) + " 元" if detail.budget_cents is not None else "未设置"),
         f"- 已规划：{_yuan(detail.planned_cents)} 元",
+        f"- 已确认实际花销：{_yuan(detail.actual_cents)} 元",
     ]
     if detail.budget_remaining_cents is not None:
         lines.append(f"- 预算余额：{_yuan(detail.budget_remaining_cents)} 元")
     if detail.preferences:
         lines.extend([f"- 偏好：{detail.preferences}"])
+    if detail.category_summaries:
+        lines.extend(["", "## 分类预算", ""])
+        labels = {
+            TripItemCategory.TRANSPORT: "交通",
+            TripItemCategory.LODGING: "住宿",
+            TripItemCategory.FOOD: "餐饮",
+            TripItemCategory.ACTIVITY: "活动",
+            TripItemCategory.OTHER: "其他",
+        }
+        for summary in detail.category_summaries:
+            lines.append(
+                f"- {labels[summary.category]}：预计 {_yuan(summary.planned_cents)} 元，"
+                f"实际 {_yuan(summary.actual_cents)} 元"
+            )
     for day in detail.daily_summaries:
         lines.extend(["", f"## 第 {day.day_index} 天（{day.date or '日期待定'}）", ""])
         if not day.items:
@@ -284,6 +414,8 @@ def export_trip_markdown(db: Session, user_id: int, trip_id: int) -> str:
         for item in day.items:
             start = item.start_time.strftime("%H:%M") if item.start_time else "时间待定"
             lines.append(f"- {start} · {item.place} · 预计 {_yuan(item.cost_cents)} 元")
+            if item.actual_cost_cents is not None:
+                lines.append(f"  已确认实际花销：{_yuan(item.actual_cost_cents)} 元")
             if item.note:
                 lines.append(f"  {item.note}")
         lines.append(f"\n当日小计：{_yuan(day.subtotal_cents)} 元")

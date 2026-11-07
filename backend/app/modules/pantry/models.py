@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, Date, Index, Numeric, String
+from sqlalchemy import CheckConstraint, Date, Index, Numeric, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -94,3 +94,16 @@ class ShoppingItem(UserOwnedMixin, TimestampMixin, SoftDeleteMixin, Base):
         constrained_enum(ShoppingSource, 20), default=ShoppingSource.MANUAL
     )
     recipe_name: Mapped[str | None] = mapped_column(String(100))
+
+
+class CookReceipt(UserOwnedMixin, TimestampMixin, Base):
+    """一次“做了这道菜”的持久回执；同键同请求重放返回原扣减结果。"""
+
+    __tablename__ = "cook_receipts"
+    __table_args__ = (
+        UniqueConstraint("user_id", "request_id", name="uq_cook_receipts_user_request"),
+    )
+
+    request_id: Mapped[str] = mapped_column(String(64))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response_json: Mapped[str] = mapped_column(Text)

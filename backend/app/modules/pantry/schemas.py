@@ -114,6 +114,12 @@ class ConsumeResponse(BaseModel):
 class CookRequest(BaseModel):
     recipe_name: str = Field(min_length=1, max_length=100)
     uses: list[RecipeIngredient] = Field(min_length=1, max_length=50)
+    request_id: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+    )
 
     @field_validator("recipe_name", mode="before")
     @classmethod

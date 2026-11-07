@@ -17,6 +17,7 @@ from app.modules.trip.schemas import (
     TripItemCreate,
     TripItemResponse,
     TripItemUpdate,
+    TripSpendRequest,
     TripUpdate,
 )
 from app.modules.trip.service import (
@@ -27,7 +28,10 @@ from app.modules.trip.service import (
     export_trip_markdown,
     get_trip,
     list_trips,
+    mark_trip_item_spent,
     reorder_trip_items,
+    restore_trip,
+    restore_trip_item,
     trip_response,
     update_trip,
     update_trip_item,
@@ -96,6 +100,22 @@ def delete_item_endpoint(db: Db, current_user: CurrentUser, trip_id: int, item_i
     return ok(None, "行程条目已删除")
 
 
+@router.post("/{trip_id}/items/{item_id}/restore")
+def restore_item_endpoint(db: Db, current_user: CurrentUser, trip_id: int, item_id: int) -> dict:
+    item = restore_trip_item(db, current_user.id, trip_id, item_id)
+    result = TripItemResponse.model_validate(item)
+    return ok(result.model_dump(mode="json"), "行程条目已恢复")
+
+
+@router.post("/{trip_id}/items/{item_id}/spend")
+def spend_item_endpoint(
+    db: Db, current_user: CurrentUser, trip_id: int, item_id: int, data: TripSpendRequest
+) -> dict:
+    item = mark_trip_item_spent(db, current_user.id, trip_id, item_id, data)
+    result = TripItemResponse.model_validate(item)
+    return ok(result.model_dump(mode="json"), "实际花销已写入账本")
+
+
 @router.get("/{trip_id}/export")
 def export_trip_endpoint(
     db: Db,
@@ -125,6 +145,13 @@ def update_trip_endpoint(
     trip = update_trip(db, current_user.id, trip_id, data)
     result = trip_response(db, current_user.id, trip)
     return ok(result.model_dump(mode="json"), "行程已更新")
+
+
+@router.post("/{trip_id}/restore")
+def restore_trip_endpoint(db: Db, current_user: CurrentUser, trip_id: int) -> dict:
+    trip = restore_trip(db, current_user.id, trip_id)
+    result = trip_response(db, current_user.id, trip)
+    return ok(result.model_dump(mode="json"), "行程已恢复")
 
 
 @router.delete("/{trip_id}")

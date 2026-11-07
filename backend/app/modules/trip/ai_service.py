@@ -64,6 +64,7 @@ def _convert_output(output: LLMTripOutput, data: TripGenerateRequest) -> TripGen
         destination=data.destination,
         start_date=data.start_date,
         days=data.days,
+        travelers=data.travelers,
         budget_cents=data.budget_cents,
         preferences=data.preferences,
         generated_by=GeneratedBy.AI,

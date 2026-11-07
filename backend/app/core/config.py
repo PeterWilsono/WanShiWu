@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     allow_register: bool = True
     scheduler_enabled: bool = True
     frontend_dist: str | None = None  # 桌面版/单进程部署时指向前端构建目录
+    cors_origins: list[str] = [
+        "https://localhost",  # Capacitor Android / iOS 页面来源
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ]
 
     # ---- 鉴权 ----
     jwt_secret: str = "change-me-to-a-long-random-string"

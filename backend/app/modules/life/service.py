@@ -144,6 +144,18 @@ def delete_todo(db: Session, user_id: int, todo_id: int) -> None:
     db.commit()
 
 
+def restore_todo(db: Session, user_id: int, todo_id: int) -> Todo:
+    """恢复当前用户的软删除待办；重复恢复保持幂等。"""
+    todo = db.scalar(select(Todo).where(Todo.id == todo_id, Todo.user_id == user_id))
+    if todo is None:
+        raise AppError(ErrorCode.NOT_FOUND, "待办不存在", 404)
+    if todo.deleted_at is not None:
+        todo.deleted_at = None
+        db.commit()
+        db.refresh(todo)
+    return todo
+
+
 def advance_due_at(due_at: datetime, recurrence: Recurrence) -> datetime:
     """以原截止时间为基准顺延一个周期，保留原时刻与时区。"""
     if recurrence == Recurrence.DAILY:
@@ -326,6 +338,32 @@ def delete_event(db: Session, user_id: int, event_id: int) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+def restore_event(db: Session, user_id: int, event_id: int) -> Event:
+    """恢复日程和原提醒，保留既有触发/已读状态；重复恢复保持幂等。"""
+    event = db.scalar(select(Event).where(Event.id == event_id, Event.user_id == user_id))
+    if event is None:
+        raise AppError(ErrorCode.NOT_FOUND, "日程不存在", 404)
+    if event.deleted_at is None:
+        return event
+    event.deleted_at = None
+    reminder = db.scalar(
+        select(Reminder).where(
+            Reminder.user_id == user_id,
+            Reminder.target_type == ReminderTargetType.EVENT,
+            Reminder.target_id == event.id,
+        )
+    )
+    if reminder is not None and event.remind_before_min is not None:
+        reminder.deleted_at = None
+    try:
+        db.commit()
+        db.refresh(event)
+    except Exception:
+        db.rollback()
+        raise
+    return event
 
 
 def fire_due_reminders(db: Session, current_time: datetime | None = None) -> int:
@@ -638,6 +676,22 @@ def delete_transaction(db: Session, user_id: int, transaction_id: int) -> None:
     transaction = get_transaction(db, user_id, transaction_id)
     transaction.deleted_at = now_utc()
     db.commit()
+
+
+def restore_transaction(db: Session, user_id: int, transaction_id: int) -> Transaction:
+    """恢复软删除账目，使其重新进入列表和统计；重复恢复保持幂等。"""
+    transaction = db.scalar(
+        select(Transaction)
+        .options(selectinload(Transaction.category))
+        .where(Transaction.id == transaction_id, Transaction.user_id == user_id)
+    )
+    if transaction is None:
+        raise AppError(ErrorCode.NOT_FOUND, "账目不存在", 404)
+    if transaction.deleted_at is not None:
+        transaction.deleted_at = None
+        db.commit()
+        db.refresh(transaction)
+    return transaction
 
 
 def get_monthly_stats(

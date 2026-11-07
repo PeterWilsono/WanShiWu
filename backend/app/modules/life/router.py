@@ -55,6 +55,9 @@ from app.modules.life.service import (
     list_todos,
     list_transactions,
     mark_notification_read,
+    restore_event,
+    restore_todo,
+    restore_transaction,
     update_category,
     update_event,
     update_todo,
@@ -129,6 +132,11 @@ def delete_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser)
     return ok(message="删除成功")
 
 
+@router.post("/todos/{todo_id}/restore")
+def restore_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    return ok(serialize_todo(restore_todo(db, current_user.id, todo_id)), "恢复成功")
+
+
 @router.post("/todos/{todo_id}/complete")
 def complete_todo_endpoint(todo_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     todo, next_todo = complete_todo(db, current_user.id, todo_id)
@@ -181,6 +189,11 @@ def update_event_endpoint(
 def delete_event_endpoint(event_id: int, db: DbSession, current_user: CurrentUser) -> dict:
     delete_event(db, current_user.id, event_id)
     return ok(message="删除成功")
+
+
+@router.post("/events/{event_id}/restore")
+def restore_event_endpoint(event_id: int, db: DbSession, current_user: CurrentUser) -> dict:
+    return ok(serialize_event(restore_event(db, current_user.id, event_id)), "恢复成功")
 
 
 @router.get("/notifications")
@@ -289,6 +302,14 @@ def delete_transaction_endpoint(
 ) -> dict:
     delete_transaction(db, current_user.id, transaction_id)
     return ok(message="删除成功")
+
+
+@router.post("/transactions/{transaction_id}/restore")
+def restore_transaction_endpoint(
+    transaction_id: int, db: DbSession, current_user: CurrentUser
+) -> dict:
+    transaction = restore_transaction(db, current_user.id, transaction_id)
+    return ok(serialize_transaction(transaction), "恢复成功")
 
 
 @router.get("/stats/monthly")

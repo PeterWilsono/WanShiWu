@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.modules.trip.models import GeneratedBy, TripStatus
+from app.modules.trip.models import GeneratedBy, TripItemCategory, TripStatus
 
 MAX_MONEY_CENTS = 9_999_999_999
 
@@ -16,6 +16,7 @@ class TripItemCreate(BaseModel):
     start_time: time | None = None
     place: str = Field(min_length=1, max_length=200)
     note: str | None = Field(default=None, max_length=2000)
+    category: TripItemCategory = TripItemCategory.ACTIVITY
     cost_cents: int = Field(default=0, ge=0, le=MAX_MONEY_CENTS)
 
 
@@ -25,6 +26,7 @@ class TripItemUpdate(BaseModel):
     start_time: time | None = None
     place: str | None = Field(default=None, min_length=1, max_length=200)
     note: str | None = Field(default=None, max_length=2000)
+    category: TripItemCategory | None = None
     cost_cents: int | None = Field(default=None, ge=0, le=MAX_MONEY_CENTS)
 
 
@@ -33,6 +35,7 @@ class TripCreate(BaseModel):
     destination: str = Field(min_length=1, max_length=100)
     start_date: date | None = None
     days: int = Field(ge=1, le=30)
+    travelers: int = Field(default=1, ge=1, le=20)
     budget_cents: int | None = Field(default=None, ge=0, le=MAX_MONEY_CENTS)
     preferences: str | None = Field(default=None, max_length=1000)
     generated_by: GeneratedBy = GeneratedBy.MANUAL
@@ -51,9 +54,15 @@ class TripUpdate(BaseModel):
     destination: str | None = Field(default=None, min_length=1, max_length=100)
     start_date: date | None = None
     days: int | None = Field(default=None, ge=1, le=30)
+    travelers: int | None = Field(default=None, ge=1, le=20)
     budget_cents: int | None = Field(default=None, ge=0, le=MAX_MONEY_CENTS)
     preferences: str | None = Field(default=None, max_length=1000)
     status: TripStatus | None = None
+
+
+class TripSpendRequest(BaseModel):
+    amount_cents: int = Field(gt=0, le=MAX_MONEY_CENTS)
+    occurred_at: datetime
 
 
 class ReorderItem(BaseModel):
@@ -86,7 +95,10 @@ class TripItemResponse(BaseModel):
     start_time: time | None
     place: str
     note: str | None
+    category: TripItemCategory
     cost_cents: int
+    actual_cost_cents: int | None
+    ledger_transaction_id: int | None
     created_at: datetime
     updated_at: datetime
 
@@ -98,12 +110,19 @@ class DaySummary(BaseModel):
     subtotal_cents: int
 
 
+class TripCategorySummary(BaseModel):
+    category: TripItemCategory
+    planned_cents: int
+    actual_cents: int
+
+
 class TripResponse(BaseModel):
     id: int
     title: str
     destination: str
     start_date: date | None
     days: int
+    travelers: int
     budget_cents: int | None
     preferences: str | None
     generated_by: GeneratedBy
@@ -111,6 +130,8 @@ class TripResponse(BaseModel):
     items: list[TripItemResponse]
     daily_summaries: list[DaySummary]
     planned_cents: int
+    actual_cents: int
+    category_summaries: list[TripCategorySummary]
     budget_remaining_cents: int | None
     over_budget: bool
     created_at: datetime
@@ -128,6 +149,7 @@ class TripGenerateRequest(BaseModel):
     destination: str = Field(min_length=1, max_length=100)
     start_date: date | None = None
     days: int = Field(ge=1, le=30)
+    travelers: int = Field(default=1, ge=1, le=20)
     budget_cents: int | None = Field(default=None, ge=0, le=MAX_MONEY_CENTS)
     preferences: str | None = Field(default=None, max_length=1000)
 

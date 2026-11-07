@@ -1,6 +1,6 @@
 {
   "name": "wanshiwu-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "万事屋 Windows 桌面软件",
   "main": "main.js",
@@ -9,6 +9,7 @@
   "scripts": {
     "start": "electron .",
     "smoke": "electron . --smoke-test",
+    "test": "node --test tests/*.test.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win nsis --x64"
   },

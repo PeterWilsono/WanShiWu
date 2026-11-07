@@ -1,15 +1,24 @@
 """食材管家业务逻辑；所有库存查询均限定当前用户。"""
 
+import hashlib
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, nulls_last, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, ErrorCode
 from app.core.time import now_utc
-from app.modules.pantry.models import Ingredient, IngredientStatus, ShoppingItem, ShoppingSource
+from app.modules.pantry.models import (
+    CookReceipt,
+    Ingredient,
+    IngredientStatus,
+    ShoppingItem,
+    ShoppingSource,
+)
 from app.modules.pantry.schemas import (
     ConsumeBatchResult,
     ConsumeRequest,
@@ -109,6 +118,24 @@ def delete_ingredient(db: Session, user_id: int, ingredient_id: int) -> None:
     db.commit()
 
 
+def restore_ingredient(db: Session, user_id: int, ingredient_id: int) -> Ingredient:
+    ingredient = db.scalar(
+        select(Ingredient).where(
+            Ingredient.id == ingredient_id,
+            Ingredient.user_id == user_id,
+            Ingredient.deleted_at.is_not(None),
+        )
+    )
+    if ingredient is None:
+        raise AppError(ErrorCode.NOT_FOUND, "已删除的食材批次不存在", 404)
+    ingredient.deleted_at = None
+    if ingredient.quantity == 0:
+        ingredient.status = IngredientStatus.USED_UP
+    db.commit()
+    db.refresh(ingredient)
+    return ingredient
+
+
 def _decimal_text(value: Decimal) -> str:
     return format(value, "f")
 
@@ -204,8 +231,35 @@ def consume_ingredient(
     )
 
 
+def _cook_request_hash(data: CookRequest) -> str:
+    payload = data.model_dump(mode="json", exclude={"request_id"})
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _existing_cook_receipt(
+    db: Session, user_id: int, request_id: str, request_hash: str
+) -> CookResponse | None:
+    receipt = db.scalar(
+        select(CookReceipt).where(
+            CookReceipt.user_id == user_id,
+            CookReceipt.request_id == request_id,
+        )
+    )
+    if receipt is None:
+        return None
+    if receipt.request_hash != request_hash:
+        raise AppError(ErrorCode.CONFLICT, "这次做菜确认的内容已变化，请重新核对后再提交", 409)
+    return CookResponse.model_validate_json(receipt.response_json)
+
+
 def cook_recipe(db: Session, user_id: int, data: CookRequest) -> CookResponse:
-    """整道菜只提交一次；任何食材不足都恢复此前的所有扣减。"""
+    """整道菜只提交一次；请求标识让安全重试不会重复扣减。"""
+    request_hash = _cook_request_hash(data)
+    if data.request_id:
+        existing = _existing_cook_receipt(db, user_id, data.request_id, request_hash)
+        if existing is not None:
+            return existing
     try:
         consumed = [
             consume_ingredient(
@@ -216,11 +270,28 @@ def cook_recipe(db: Session, user_id: int, data: CookRequest) -> CookResponse:
             )
             for item in data.uses
         ]
+        result = CookResponse(recipe_name=data.recipe_name, consumed=consumed)
+        if data.request_id:
+            db.add(
+                CookReceipt(
+                    user_id=user_id,
+                    request_id=data.request_id,
+                    request_hash=request_hash,
+                    response_json=result.model_dump_json(),
+                )
+            )
         db.commit()
+        return result
+    except IntegrityError:
+        db.rollback()
+        if data.request_id:
+            existing = _existing_cook_receipt(db, user_id, data.request_id, request_hash)
+            if existing is not None:
+                return existing
+        raise
     except Exception:
         db.rollback()
         raise
-    return CookResponse(recipe_name=data.recipe_name, consumed=consumed)
 
 
 def resolve_expiring_days(settings: dict, requested_days: int | None) -> int:
@@ -354,3 +425,19 @@ def delete_shopping_item(db: Session, user_id: int, item_id: int) -> None:
     item = get_shopping_item(db, user_id, item_id)
     item.deleted_at = now_utc()
     db.commit()
+
+
+def restore_shopping_item(db: Session, user_id: int, item_id: int) -> ShoppingItem:
+    item = db.scalar(
+        select(ShoppingItem).where(
+            ShoppingItem.id == item_id,
+            ShoppingItem.user_id == user_id,
+            ShoppingItem.deleted_at.is_not(None),
+        )
+    )
+    if item is None:
+        raise AppError(ErrorCode.NOT_FOUND, "已删除的购物项不存在", 404)
+    item.deleted_at = None
+    db.commit()
+    db.refresh(item)
+    return item

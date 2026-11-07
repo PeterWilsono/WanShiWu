@@ -21,6 +21,7 @@ from app.modules.inbox.service import (
     get_bookmark,
     list_bookmarks,
     list_tags,
+    restore_bookmark,
     search_bookmarks,
     update_bookmark,
 )
@@ -116,6 +117,13 @@ def update_bookmark_endpoint(
     bookmark = update_bookmark(db, current_user.id, bookmark_id, data)
     result = bookmark_response(db, current_user.id, bookmark)
     return ok(result.model_dump(mode="json"), "收藏已更新")
+
+
+@router.post("/bookmarks/{bookmark_id}/restore")
+def restore_bookmark_endpoint(db: Db, current_user: CurrentUser, bookmark_id: int) -> dict:
+    bookmark = restore_bookmark(db, current_user.id, bookmark_id)
+    result = bookmark_response(db, current_user.id, bookmark)
+    return ok(result.model_dump(mode="json"), "收藏已恢复")
 
 
 @router.delete("/bookmarks/{bookmark_id}")
