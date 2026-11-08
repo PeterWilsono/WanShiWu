@@ -13,6 +13,42 @@
   <img alt="Windows 10/11 64 位" src="https://img.shields.io/badge/Windows-10%2F11%20x64-blue">
 </p>
 
+## 界面预览
+
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="万事屋首页" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/todos.png" alt="待办：优先级与截止时间" width="100%"><br>
+      <sub><b>生活管家</b> · 待办、优先级与截止时间，完成后仍可找回</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/stats.png" alt="月度统计：收支与分类占比" width="100%"><br>
+      <sub><b>账目</b> · 按月汇总收支、分类占比与每日支出趋势</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/pantry.png" alt="食材库存：批次与保质期" width="100%"><br>
+      <sub><b>食材管家</b> · 按批次管理库存与保质期，消耗时先扣临期</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/inbox.png" alt="收藏箱：标签与摘要" width="100%"><br>
+      <sub><b>收藏箱</b> · 标签、摘要与全文搜索，值得回看的内容留在一处</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/assistant.png" alt="统一 AI 入口：一句话生成草稿" width="100%"><br>
+  <sub><b>统一 AI 入口</b> · 一句话说清楚，AI 拆成草稿，确认后才写入</sub>
+</p>
+
+<sub>以上截图使用演示数据，界面以实际版本为准。</sub>
+
 ## 下载与安装
 
 ### [下载万事屋 Windows 最新版](https://github.com/PeterWilsono/WanShiWu/releases/latest)
