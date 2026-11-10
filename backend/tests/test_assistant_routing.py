@@ -38,7 +38,8 @@ def test_tool_descriptions_tell_model_where_scheduled_tasks_go() -> None:
 
 
 def test_eval_cases_cover_timed_task_routing() -> None:
-    cases = [json.loads(line) for line in CASES_PATH.read_text(encoding="utf-8").splitlines() if line]
+    lines = CASES_PATH.read_text(encoding="utf-8").splitlines()
+    cases = [json.loads(line) for line in lines if line]
 
     by_text = {case["text"]: case["expect"] for case in cases}
     assert by_text["明天下午三点去踢球"]["tool"] == "create_todo"
