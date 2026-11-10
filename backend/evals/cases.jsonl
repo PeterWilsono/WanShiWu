@@ -30,7 +30,9 @@
 {"id":30,"text":"奖金发了2000，记收入","expect":{"tool":"add_income","args":{"amount":2000,"category":"工资"}}}
 {"id":31,"text":"明天那个事帮我弄一下","expect":{"tool":"ask_clarification"}}
 {"id":32,"text":"咖啡花了22，顺便买一包咖啡豆放常温","expect":{"actions":[{"tool":"add_expense","args":{"amount":22,"category":"餐饮"}},{"tool":"add_ingredient","args":{"name":"咖啡豆","quantity":1,"unit":"包","storage":"room"}}]}}
-{"id":33,"text":"周日下午四点在滨江公园跑步","expect":{"tool":"create_event","args":{"title":"跑步","start_at":"2026-11-01T16:00:00+08:00","location":"滨江公园"}}}
+{"id":33,"text":"周日下午四点在滨江公园跑步","expect":{"tool":"create_todo","args":{"title":"跑步","due_at":"2026-11-01T16:00:00+08:00"}}}
 {"id":34,"text":"下周三前把报销单交了","expect":{"tool":"create_todo","args":{"title":"报销单","due_at":"2026-11-04T23:59:00+08:00"}}}
 {"id":35,"text":"常温还有3包挂面","expect":{"tool":"add_ingredient","args":{"name":"挂面","quantity":3,"unit":"包","storage":"room"}}}
 {"id":36,"text":"想去成都玩四天，主要看川剧和吃小吃","expect":{"tool":"create_trip","args":{"destination":"成都","days":4,"preferences":"川剧和小吃"}}}
+{"id":37,"text":"明天下午三点去踢球","expect":{"tool":"create_todo","args":{"title":"踢球","due_at":"2026-10-31T15:00:00+08:00"}}}
+{"id":38,"text":"后天上午十点去银行办卡","expect":{"tool":"create_todo","args":{"title":"办卡","due_at":"2026-11-01T10:00:00+08:00"}}}

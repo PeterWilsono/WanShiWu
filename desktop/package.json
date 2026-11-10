@@ -1,6 +1,6 @@
 {
   "name": "wanshiwu-desktop",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "万事屋 Windows 桌面软件",
   "main": "main.js",

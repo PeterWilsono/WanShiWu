@@ -103,12 +103,34 @@ TOOL_ARG_MODELS: dict[str, type[ToolArgs]] = {
     "ask_clarification": AskClarificationArgs,
 }
 
+TOOL_DESCRIPTIONS: dict[str, str] = {
+    "create_todo": (
+        "新建待办：用户自己要完成的一件事，可带截止时间 due_at。"
+        "带具体时间的个人安排（去踢球、跑步、交材料、买东西、打扫等）也用这个工具，"
+        "它会同时出现在待办清单和日历里；地点等补充信息写入 note。"
+    ),
+    "create_event": (
+        "新建日程：与他人约定、需要按时到场参加的会议、约见、就诊、面试、课程、"
+        "婚礼、演出、航班或车次。日程只占时间段，不会出现在待办清单，因此不要用它记录"
+        "用户自己要去完成的事。"
+    ),
+    "add_expense": "记录一笔支出，需要金额、分类和发生时间。",
+    "add_income": "记录一笔收入，需要金额、分类和发生时间。",
+    "add_ingredient": "把买到的食材加进库存，需要名称、数量、单位和存放方式。",
+    "save_bookmark": "收藏一个网页链接，可附带备注。",
+    "create_trip": "创建一个旅行计划草稿，需要目的地和天数。",
+    "ask_clarification": "信息不足时只追问，不执行任何写入。",
+}
+
 TOOL_DEFINITIONS: list[dict[str, object]] = [
     {
         "type": "function",
         "function": {
             "name": name,
-            "description": f"万事屋动作：{name}；严格按参数 Schema 填写，不得附加字段。",
+            "description": (
+                f"万事屋动作：{TOOL_DESCRIPTIONS[name]} "
+                "严格按参数 Schema 填写，不得附加字段。"
+            ),
             "parameters": model.model_json_schema(),
             "strict": True,
         },

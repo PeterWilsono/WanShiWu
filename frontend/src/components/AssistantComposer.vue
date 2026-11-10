@@ -126,7 +126,8 @@ function assistantError(error: unknown): string {
 }
 
 function toAction(draft: ActionDraft): AssistantAction {
-  const args = { ...draft.originalArgs }
+  // 每种工具只提交自己的字段：切换类型后不能残留另一类的参数（后端禁止多余字段）。
+  const args: Record<string, unknown> = {}
   if (draft.tool === 'create_todo') {
     Object.assign(args, {
       title: draft.title.trim(),
@@ -269,6 +270,22 @@ function toolName(tool: AssistantTool): string {
     ask_clarification: '补充信息',
   }[tool]
 }
+
+/** 日程只占时间段、不能勾选完成；用户改主意时一键转成待办，时间与地点都保留。 */
+function convertEventToTodo(draft: ActionDraft): void {
+  if (draft.tool !== 'create_event') return
+  draft.dueAt = draft.startAt ?? draft.endAt ?? null
+  const place = draft.location.trim()
+  const note = draft.note.trim()
+  if (place) draft.note = note ? `${note}；地点：${place}` : `地点：${place}`
+  draft.tool = 'create_todo'
+  draft.summary = `新建待办：${draft.title.trim() || '未命名'}`
+  draft.startAt = null
+  draft.endAt = null
+  draft.location = ''
+  draft.remindBeforeMin = null
+  ElMessage.success('已改为待办，确认后会同时出现在待办清单和日历里')
+}
 </script>
 
 <template>
@@ -341,6 +358,10 @@ function toolName(tool: AssistantTool): string {
               <el-form-item label="结束时间"><el-date-picker v-model="draft.endAt" type="datetime" class="full-width" /></el-form-item>
               <el-form-item label="地点"><el-input v-model="draft.location" maxlength="200" /></el-form-item>
               <el-form-item label="提前提醒（分钟）"><el-input-number v-model="draft.remindBeforeMin" :min="0" class="full-width" /></el-form-item>
+            </div>
+            <div class="draft-switch">
+              <span>日程只占时间，不会进入待办清单。如果这是你自己要去做的事，可以改成待办，勾选完成。</span>
+              <el-button link type="primary" @click="convertEventToTodo(draft)">改为待办</el-button>
             </div>
           </template>
           <template v-else-if="draft.tool === 'add_expense' || draft.tool === 'add_income'">
@@ -420,6 +441,20 @@ function toolName(tool: AssistantTool): string {
 .draft-card__header strong { font-family: var(--font-display); font-size: 17px; }
 .draft-card__header span { color: var(--ink-muted); font-size: 12px; }
 .draft-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.draft-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vermilion) 7%, transparent);
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.draft-switch .el-button { flex: none; font-size: 12px; }
 .full-width { width: 100%; }
 .assistant__confirm-row { justify-content: flex-end; }
 @media (max-width: 640px) {
